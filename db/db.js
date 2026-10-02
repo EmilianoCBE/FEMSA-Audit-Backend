@@ -34,7 +34,7 @@ export function getPool() {
 
     if (missing.length > 0) {
       throw new Error(
-        `Faltan variables en apps/api/.env: ${missing.join(", ")}`
+        `Faltan variables en .env: ${missing.join(", ")}`
       );
     }
 

@@ -4,11 +4,11 @@ La página `/login` prioriza Entra ID y ofrece usuario/email y contraseña como 
 
 ## Preparar acceso local
 
-1. Configura `DB_SERVER`, `DB_NAME`, `DB_USER`, `DB_PASSWORD` en `apps/api/.env`.
+1. Configura `DB_SERVER`, `DB_NAME`, `DB_USER`, `DB_PASSWORD` en `.env`.
 2. Agrega las variables de `.env.auth.example` a ese mismo archivo. Para acceso local basta con `WEB_ORIGIN` y `NODE_ENV`.
-3. Desde la raíz ejecuta `npm run auth:migrate -w @femsa-audit/api`. Crea `dbo.AuthUsers` y `dbo.AuthSessions` sin modificar tablas existentes; puede ejecutarse nuevamente.
-4. Ejecuta `npm run auth:create-user -w @femsa-audit/api` en una terminal. Solicita usuario, email, nombre, rol y contraseña oculta (mínimo 12 caracteres).
-5. Ejecuta `npm run dev` y abre `http://127.0.0.1:5173/login`. Usa este mismo host en `WEB_ORIGIN`.
+3. Ejecuta `npm run auth:migrate`. Crea `dbo.AuthUsers` y `dbo.AuthSessions` sin modificar tablas existentes; puede ejecutarse nuevamente.
+4. Ejecuta `npm run auth:create-user` en una terminal. Solicita usuario, email, nombre, rol y contraseña oculta (mínimo 12 caracteres).
+5. Ejecuta `npm run dev` aquí y también en el repo del frontend ([FEMSA-Audit](https://github.com/EmilianoCBE/FEMSA-Audit)); abre `http://127.0.0.1:5173/login`. Usa este mismo host en `WEB_ORIGIN`.
 
 `Username` no admite `@`; así los identificadores de email y usuario no son ambiguos. `Role` se devuelve desde SQL y no lo decide el navegador. Si ya existe otra tabla de usuarios, adapta `models/auth.model.js` a sus columnas y migra los hashes al formato `scrypt$<sal hexadecimal>$<hash hexadecimal>`; no almacenes contraseñas sin hash.
 
@@ -44,4 +44,4 @@ En producción configura `NODE_ENV=production`, HTTPS, `WEB_ORIGIN` y el redirec
 
 ## Verificación
 
-`npm run test -w @femsa-audit/api` prueba hashes, validación, login por ambas clases de identificador, sesiones, logout, cuentas inactivas y retornos inválidos. Utiliza un adaptador SQL en memoria; no valida conectividad ni ejecuta la migración en Azure. `npm run build` verifica TypeScript y genera la web. Para comprobar Entra de extremo a extremo se requieren las credenciales y un usuario autorizado del tenant.
+`npm test` prueba hashes, validación, login por ambas clases de identificador, sesiones, logout, cuentas inactivas y retornos inválidos. Utiliza un adaptador SQL en memoria; no valida conectividad ni ejecuta la migración en Azure. Para comprobar Entra de extremo a extremo se requieren las credenciales y un usuario autorizado del tenant.
