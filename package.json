@@ -7,12 +7,17 @@
   "type": "module",
   "scripts": {
     "dev": "nodemon index.js",
-    "start": "node index.js"
+    "start": "node index.js",
+    "test": "node --test tests/*.test.js",
+    "auth:migrate": "node scripts/migrate-auth.js",
+    "auth:create-user": "node scripts/create-user.js"
   },
   "dependencies": {
     "cors": "^2.8.6",
     "dotenv": "^17.4.2",
     "express": "^5.2.1",
+    "express-rate-limit": "^8.7.0",
+    "jose": "^6.2.12",
     "morgan": "^1.12.1",
     "mssql": "^12.7.2"
   },
