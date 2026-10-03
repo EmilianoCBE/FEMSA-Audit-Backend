@@ -61,6 +61,10 @@ tests/            → pruebas con node --test
 | GET | `/api/ping` | `{"msg":"pong"}` |
 | GET | `/api/health` | Estado de la conexión a la base de datos (503 si no responde) |
 | — | `/api/auth/*` | Login, sesión, logout y Microsoft Entra ID (ver [AUTH.md](AUTH.md)) |
+| GET | `/api/designer/layouts` | US03 Magda: lista layouts disponibles para abrir en el Designer |
+| GET | `/api/designer/layouts/:layoutId` | US03 Magda: obtiene un layout con sus elementos del canvas |
+| POST | `/api/designer/layouts` | US03 Magda: crea un layout/módulo visual configurable |
+| PUT | `/api/designer/layouts/:layoutId/canvas` | US03 Magda: guarda posiciones y configuración después del drag & drop |
 
 Los errores responden `{ "msg": "..." }` con su código HTTP.
 

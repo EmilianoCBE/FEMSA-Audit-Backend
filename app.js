@@ -4,6 +4,7 @@ import morgan from "morgan";
 import { errorHandler, notFound } from "./middlewares/errorHandler.js";
 import indexRoutes from "./routes/index.routes.js";
 import authRoutes from "./routes/auth.routes.js";
+import designerRoutes from "./routes/designer.routes.js";
 
 const app = express();
 
@@ -14,6 +15,7 @@ app.use(cors({ origin: process.env.WEB_ORIGIN || 'http://127.0.0.1:5173', creden
 app.use(express.json({ limit: '16kb' }));
 
 app.use('/api/auth', authRoutes);
+app.use('/api/designer', designerRoutes);
 app.use("/api", indexRoutes);
 
 app.use(notFound);
