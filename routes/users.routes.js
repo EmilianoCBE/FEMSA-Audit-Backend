@@ -6,7 +6,10 @@ import {
   assignUserRole
 } from '../controllers/users.controller.js';
 
-import { requireAuth, sameOrigin } from '../middlewares/auth.js';
+import {
+  requireAuth,
+  sameOrigin
+} from '../middlewares/auth.js';
 
 const router = Router();
 
@@ -19,17 +22,31 @@ router.use((req, res, next) => {
  * US02.1
  * Lista de usuarios.
  */
-router.get('/', requireAuth, getUsers);
+router.get(
+  '/',
+  requireAuth,
+  getUsers
+);
 
 /**
+ * US02.2
  * Obtiene los roles disponibles.
  */
-router.get('/roles', requireAuth, getRoles);
+router.get(
+  '/roles',
+  requireAuth,
+  getRoles
+);
 
 /**
  * US02.2
  * Asigna un rol a un usuario.
  */
-router.put('/:id/role', requireAuth, sameOrigin, assignUserRole);
+router.put(
+  '/:id/role',
+  requireAuth,
+  sameOrigin,
+  assignUserRole
+);
 
 export default router;
