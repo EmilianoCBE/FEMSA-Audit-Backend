@@ -91,7 +91,10 @@ test('cuentas inactivas y sesiones expiradas pierden acceso', async () => {
   assert.equal((await fetch(base + '/me', { headers })).status, 401);
 });
 test('Entra sin configuración y callback falso no crean sesión', async () => {
-  assert.equal((await fetch(base + '/entra')).status, 503);
+  const start = await fetch(base + '/entra', { redirect: 'manual' });
+  assert.equal(start.status, 302);
+  assert.equal(start.headers.get('location'), 'https://myaccount.microsoft.com/');
+  assert.equal(start.headers.get('set-cookie'), null);
   const response = await fetch(base + '/entra/callback?code=falso&state=falso', { redirect: 'manual' });
   assert.equal(response.status, 302);
   assert.equal(response.headers.get('location'), 'http://127.0.0.1:5173/login?error=entra');

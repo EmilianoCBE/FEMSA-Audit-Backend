@@ -16,6 +16,11 @@ El creador de cuentas enlaza un usuario de negocio existente por email si está 
 
 ## Configurar Microsoft Entra ID
 
+Mientras falte la configuración de Entra, `/api/auth/entra` redirige al portal
+`https://myaccount.microsoft.com/`. Es un enlace provisional: no crea una sesión
+en esta aplicación ni permite regresar autenticado. Con la configuración completa,
+la ruta utiliza el flujo de autenticación descrito a continuación.
+
 Registra una aplicación de un solo tenant en Microsoft Entra ID. Configura una plataforma **Web** con el redirect `http://127.0.0.1:5173/api/auth/entra/callback` (Vite lo reenvía a Express). Agrega a `.env` el tenant ID, client ID, client secret y redirect URI. Genera `AUTH_SECRET` con `node -e "console.log(require('node:crypto').randomBytes(32).toString('hex'))"`.
 
 El backend utiliza [Authorization Code con PKCE y OpenID Connect](https://learn.microsoft.com/en-us/entra/identity-platform/v2-oauth2-auth-code-flow), valida firma, issuer, audience, expiración, tenant y nonce, y comprueba `state` antes del intercambio. El secreto de Microsoft permanece en el backend.
