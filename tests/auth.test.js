@@ -7,7 +7,7 @@ import { hashPassword, verifyPassword } from '../utils/password.js';
 
 // Adaptador en memoria: prueba HTTP sin tocar la base de datos real.
 const sessions = new Map();
-let user, server, base, originalConnect;
+let user, server, base, originalConnect, businessUserActive = true;
 before(async () => {
   Object.assign(process.env, { DB_SERVER: 'test', DB_NAME: 'test', DB_USER: 'test', DB_PASSWORD: 'test', WEB_ORIGIN: 'http://127.0.0.1:5173' });
   delete process.env.ENTRA_TENANT_ID;
@@ -17,11 +17,11 @@ before(async () => {
     return { close: async () => {}, request() {
       const values = {};
       return { input(name, type, value) { values[name] = value; return this; }, async query(query) {
-        if (query.includes('WHERE Email =') || query.includes('WHERE Username =')) return { recordset: [user.Username, user.Email].includes(values.identifier) ? [user] : [] };
+        if (query.includes('WHERE a.Email =') || query.includes('WHERE a.Username =')) return { recordset: [user.Username, user.Email].includes(values.identifier) ? [{ ...user, IsActive: user.IsActive && businessUserActive }] : [] };
         if (query.includes('INSERT INTO dbo.AuthSessions')) { sessions.set(values.hash, { expiresAt: values.expiresAt }); return { recordset: [] }; }
-        if (query.includes('JOIN dbo.AuthUsers')) {
+        if (query.includes('JOIN dbo.AuthSessions')) {
           const session = sessions.get(values.hash);
-          return { recordset: session && session.expiresAt > new Date() && user.IsActive ? [user] : [] };
+          return { recordset: session && session.expiresAt > new Date() && user.IsActive && businessUserActive ? [user] : [] };
         }
         if (query.includes('DELETE FROM dbo.AuthSessions')) { sessions.delete(values.hash); return { recordset: [] }; }
         throw new Error('Unexpected SQL');
@@ -83,6 +83,10 @@ test('cuentas inactivas y sesiones expiradas pierden acceso', async () => {
   assert.equal((await fetch(base + '/me', { headers })).status, 401);
   assert.equal((await post('/login', { identifier: 'auditor', password: 'UnaClaveSegura123!' })).status, 401);
   user.IsActive = true;
+  businessUserActive = false;
+  assert.equal((await fetch(base + '/me', { headers })).status, 401);
+  assert.equal((await post('/login', { identifier: 'auditor', password: 'UnaClaveSegura123!' })).status, 401);
+  businessUserActive = true;
   for (const session of sessions.values()) session.expiresAt = new Date(0);
   assert.equal((await fetch(base + '/me', { headers })).status, 401);
 });

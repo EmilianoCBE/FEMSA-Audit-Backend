@@ -6,11 +6,13 @@ La página `/login` prioriza Entra ID y ofrece usuario/email y contraseña como 
 
 1. Configura `DB_SERVER`, `DB_NAME`, `DB_USER`, `DB_PASSWORD` en `.env`.
 2. Agrega las variables de `.env.auth.example` a ese mismo archivo. Para acceso local basta con `WEB_ORIGIN` y `NODE_ENV`.
-3. Ejecuta `npm run auth:migrate`. Crea `dbo.AuthUsers` y `dbo.AuthSessions` sin modificar tablas existentes; puede ejecutarse nuevamente.
+3. Ejecuta `npm run auth:migrate`. Requiere las tablas de negocio `dbo.USER` y `dbo.ROLE`. Crea `dbo.AuthUsers` y `dbo.AuthSessions` sin modificar tablas existentes; puede ejecutarse nuevamente.
 4. Ejecuta `npm run auth:create-user` en una terminal. Solicita usuario, email, nombre, rol y contraseña oculta (mínimo 12 caracteres).
 5. Ejecuta `npm run dev` aquí y también en el repo del frontend ([FEMSA-Audit](https://github.com/EmilianoCBE/FEMSA-Audit)); abre `http://127.0.0.1:5173/login`. Usa este mismo host en `WEB_ORIGIN`.
 
-`Username` no admite `@`; así los identificadores de email y usuario no son ambiguos. `Role` se devuelve desde SQL y no lo decide el navegador. Si ya existe otra tabla de usuarios, adapta `models/auth.model.js` a sus columnas y migra los hashes al formato `scrypt$<sal hexadecimal>$<hash hexadecimal>`; no almacenes contraseñas sin hash.
+`Username` no admite `@`; así los identificadores de email y usuario no son ambiguos. `AuthUsers.UserId` referencia `USER.user_id`; el nombre y rol se obtienen de `USER.full_name` y `ROLE.name`. Ambos registros de usuario deben estar activos para iniciar o mantener una sesión. Los roles deben existir antes de crear cuentas.
+
+El creador de cuentas enlaza un usuario de negocio existente por email si está activo, tiene el rol solicitado y no tiene ya una cuenta. En caso contrario crea ambos registros en una transacción. No modifica usuarios existentes ni sus roles. Como `USER.entra_id` es obligatorio, las cuentas locales nuevas reciben un UUID generado; este no representa una identidad Microsoft. `AuthUsers.EntraObjectId` permanece NULL hasta vincular explícitamente una identidad real. Las contraseñas se guardan con scrypt y sal aleatoria.
 
 ## Configurar Microsoft Entra ID
 
