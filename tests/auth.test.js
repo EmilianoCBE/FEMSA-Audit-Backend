@@ -17,9 +17,9 @@ before(async () => {
     return { close: async () => {}, request() {
       const values = {};
       return { input(name, type, value) { values[name] = value; return this; }, async query(query) {
-        if (query.includes('WHERE a.Email =') || query.includes('WHERE a.Username =')) return { recordset: [user.Username, user.Email].includes(values.identifier) ? [{ ...user, IsActive: user.IsActive && businessUserActive }] : [] };
+        if (/WHERE\s+(a\.)?(Email|Username)\s*=/.test(query)) return { recordset: [user.Username, user.Email].includes(values.identifier) ? [{ ...user, IsActive: user.IsActive && businessUserActive }] : [] };
         if (query.includes('INSERT INTO dbo.AuthSessions')) { sessions.set(values.hash, { expiresAt: values.expiresAt }); return { recordset: [] }; }
-        if (query.includes('JOIN dbo.AuthSessions')) {
+        if (/JOIN\s+dbo\.AuthUsers\b/.test(query)) {
           const session = sessions.get(values.hash);
           return { recordset: session && session.expiresAt > new Date() && user.IsActive && businessUserActive ? [user] : [] };
         }
