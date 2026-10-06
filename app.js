@@ -29,8 +29,6 @@ app.use(express.json({ limit: "16kb" }));
 app.use("/api/auth", authRoutes);
 app.use("/api/users", usersRoutes);
 app.use("/api/risks", riskRoutes);
-app.use('/api/auth', authRoutes);
-app.use('/api/users', usersRoutes);
 app.use('/api/designer', designerRoutes);
 app.use("/api", indexRoutes);
 

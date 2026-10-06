@@ -1,7 +1,7 @@
 import { createInterface } from 'node:readline/promises';
 import { Writable } from 'node:stream';
-import { getPool, closeDB, sql } from '../db/db.js';
-import { hashPassword } from '../utils/password.js';
+import { closeDB } from '../db/db.js';
+import { createAuthUser } from '../models/create-auth-user.js';
 
 let hidden = false;
 const output = new Writable({ write(chunk, encoding, callback) { if (!hidden) process.stdout.write(chunk, encoding); callback(); } });
@@ -16,12 +16,7 @@ try {
   const password = await input.question('');
   hidden = false;
   process.stdout.write('\n');
-  if (!username || username.includes('@') || username.length > 100 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || email.length > 254 || !name || name.length > 150 || role.length > 80 || password.length < 12 || password.length > 1024) throw new Error('Datos inválidos. Revisa los campos y la longitud de la contraseña.');
-  const hash = await hashPassword(password);
-  const pool = await getPool();
-  await pool.request().input('username', sql.NVarChar(100), username).input('email', sql.NVarChar(254), email)
-    .input('name', sql.NVarChar(150), name).input('role', sql.NVarChar(80), role).input('hash', sql.VarChar(200), hash)
-    .query('INSERT INTO dbo.AuthUsers (Username, Email, Name, Role, PasswordHash) VALUES (@username, @email, @name, @role, @hash)');
+  await createAuthUser({ username, email, name, role, password });
   console.log('Usuario creado.');
 } catch (error) {
   hidden = false;
