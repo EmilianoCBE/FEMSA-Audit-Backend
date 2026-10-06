@@ -17,7 +17,7 @@ before(async () => {
     return { close: async () => {}, request() {
       const values = {};
       return { input(name, type, value) { values[name] = value; return this; }, async query(query) {
-        if (query.includes('WHERE Email =') || query.includes('WHERE Username =')) return { recordset: [user.Username, user.Email].includes(values.identifier) ? [user] : [] };
+        if (/WHERE\s+(a\.)?(Email|Username)\s*=/.test(query)) return { recordset: [user.Username, user.Email].includes(values.identifier) ? [user] : [] };
         if (query.includes('INSERT INTO dbo.AuthSessions')) { sessions.set(values.hash, { expiresAt: values.expiresAt }); return { recordset: [] }; }
         if (query.includes('JOIN dbo.AuthUsers')) {
           const session = sessions.get(values.hash);
