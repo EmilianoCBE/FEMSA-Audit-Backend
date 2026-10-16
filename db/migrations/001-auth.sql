@@ -1,4 +1,6 @@
 -- Ejecutar una vez en Azure SQL. No modifica tablas existentes.
+IF OBJECT_ID('dbo.USER', 'U') IS NULL OR OBJECT_ID('dbo.ROLE', 'U') IS NULL
+  THROW 50001, 'Se requieren las tablas existentes dbo.USER y dbo.ROLE.', 1;
 IF OBJECT_ID('dbo.AuthUsers', 'U') IS NULL
 BEGIN
   CREATE TABLE dbo.AuthUsers (
@@ -6,7 +8,7 @@ BEGIN
     Username NVARCHAR(100) NOT NULL,
     Email NVARCHAR(254) NOT NULL,
     Name NVARCHAR(150) NOT NULL,
-    Role NVARCHAR(80) NOT NULL DEFAULT N'Auditor',
+    UserId INT NOT NULL REFERENCES dbo.[USER](user_id),
     PasswordHash VARCHAR(200) NULL,
     EntraObjectId UNIQUEIDENTIFIER NULL,
     IsActive BIT NOT NULL DEFAULT 1,
