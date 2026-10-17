@@ -7,6 +7,7 @@ import authRoutes from "./routes/auth.routes.js";
 import usersRoutes from "./routes/users.routes.js";
 import riskRoutes from "./routes/risk.routes.js";
 import designerRoutes from "./routes/designer.routes.js";
+import riskLibraryRoutes from "./routes/riskLibrary.routes.js";
 
 const app = express();
 
@@ -31,6 +32,7 @@ app.use("/api/users", usersRoutes);
 app.use("/api/risks", riskRoutes);
 app.use('/api/designer', designerRoutes);
 app.use("/api", indexRoutes);
+app.use("/api/risk-library", riskLibraryRoutes);
 
 app.use(notFound);
 app.use(errorHandler);
