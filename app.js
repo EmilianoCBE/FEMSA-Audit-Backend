@@ -7,6 +7,7 @@ import authRoutes from "./routes/auth.routes.js";
 import usersRoutes from "./routes/users.routes.js";
 import riskRoutes from "./routes/risk.routes.js";
 import designerRoutes from "./routes/designer.routes.js";
+import versionsRoutes from "./routes/versions.routes.js";
 
 const app = express();
 
@@ -24,12 +25,15 @@ app.use(
   })
 );
 
+// US11: las versiones guardan la configuración completa de la aplicación, por eso aceptan cuerpos más grandes.
+app.use("/api/apps", express.json({ limit: "256kb" }));
 app.use(express.json({ limit: "16kb" }));
 
 app.use("/api/auth", authRoutes);
 app.use("/api/users", usersRoutes);
 app.use("/api/risks", riskRoutes);
 app.use('/api/designer', designerRoutes);
+app.use("/api/apps", versionsRoutes);
 app.use("/api", indexRoutes);
 
 app.use(notFound);
