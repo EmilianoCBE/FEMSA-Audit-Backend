@@ -82,6 +82,8 @@ tests/            → pruebas con node --test
 | POST | `/api/apps/:appId/versions/:versionId/publish` | US11 Rafael: publica un borrador; la vigente anterior pasa a archivada |
 | POST | `/api/apps/:appId/versions/:versionId/restore` | US11 Rafael: crea un borrador nuevo con la configuración de esa versión |
 | POST | `/api/ai/designer/analyze` | US15–US17 Emiliano: recibe `{ appId }` y devuelve sugerencias explicadas (reglas + IA) para un formulario del Designer; no cambia nada |
+| POST | `/api/ai/recommendations/:id/decision` | US17 Emiliano: registra `{ decision: "accepted" \| "rejected" \| "replaced", change? }`; una sola vez por sugerencia (409) |
+| GET | `/api/ai/designer/metrics?appId=` | US17 Emiliano: aceptación por origen (reglas / IA) y latencia promedio de la IA |
 
 Los errores responden `{ "msg": "..." }` con su código HTTP.
 
@@ -91,6 +93,9 @@ Las rutas `/api/apps/*` requieren sesión. Antes de usarlas crea la tabla con `n
 El asistente de IA (`/api/ai/*`, requiere sesión) usa `AI_PROVIDER=mock` por defecto: responde sin llamar a ningún
 servicio externo. Las reglas de inconsistencias siempre responden; si el proveedor falla o tarda más de `AI_TIMEOUT_MS`,
 la respuesta trae `aiAvailable: false` y solo las reglas.
+Las sugerencias y las decisiones se guardan en `dbo.AppAiRecommendations`: créala con `npm run ai:migrate` (requiere
+`npm run auth:migrate`). Si la tabla no existe o la BD falla, el análisis responde igual con `recorded: false`.
+Para usar Gemini: `AI_PROVIDER=gemini` y `GEMINI_API_KEY` en `.env`; verifica con `npm run ai:check`.
 
 ### Al agregar tablas y endpoints
 
