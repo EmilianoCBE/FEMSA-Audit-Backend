@@ -1,0 +1,89 @@
+// US15-US17 - Emiliano Carrizales: asistente de diseño del App Builder (Designer).
+// Junta las reglas (US16, siempre disponibles) con las propuestas del proveedor de IA (US15), valida todo con el esquema
+// y nunca modifica la configuración: solo devuelve propuestas que el usuario acepta o rechaza en el front (US17).
+import { findDesignerLayout } from "../../models/designer.model.js";
+import { notFoundError } from "../../utils/httpErrors.js";
+import { hydrateDesignerLayout } from "../designer.service.js";
+import { validateAppId } from "../versions.service.js";
+import { getAiProvider } from "./providers/index.js";
+import { runDesignerRules } from "./rules/designer.rules.js";
+import { providerResponseSchema, suggestionSchema } from "./schemas.js";
+
+const DEFAULT_TIMEOUT_MS = 8000;
+
+/** Solo la estructura del formulario: es lo único que sale hacia el proveedor de IA (RNF-13). */
+export function toDesignerFields(elements = []) {
+  return elements.map((element) => ({
+    id: String(element.id),
+    type: element.type,
+    label: typeof element.config?.label === "string" ? element.config.label : "",
+    required: element.config?.required === true,
+    section: element.config?.section ?? null,
+    formula: typeof element.config?.formula === "string" ? element.config.formula : null,
+  }));
+}
+
+function withTimeout(promise, timeoutMs) {
+  let timer;
+  const timeout = new Promise((_, reject) => {
+    timer = setTimeout(() => reject(new Error(`La IA no respondió en ${timeoutMs} ms.`)), timeoutMs);
+  });
+  return Promise.race([promise, timeout]).finally(() => clearTimeout(timer));
+}
+
+/**
+ * Descarta lo que la IA inventó: formato inválido, campos que no existen o sugerencias que repiten una regla.
+ * La IA solo propone, así que una respuesta mala se ignora en lugar de romper la pantalla.
+ */
+export function validateAiSuggestions(raw, fields, ruleSuggestions = []) {
+  const parsed = providerResponseSchema.safeParse(raw);
+  if (!parsed.success) return [];
+
+  const fieldIds = new Set(fields.map((field) => field.id));
+  const covered = new Set(ruleSuggestions.map((suggestion) => `${suggestion.fieldId}:${suggestion.change?.op}`));
+
+  return parsed.data.suggestions.flatMap((candidate) => {
+    const result = suggestionSchema.safeParse(candidate);
+    if (!result.success) return [];
+    const suggestion = result.data;
+    const targets = [suggestion.fieldId, suggestion.change?.fieldId].filter(Boolean);
+    if (targets.some((id) => !fieldIds.has(id))) return [];
+    if (suggestion.fieldId && covered.has(`${suggestion.fieldId}:${suggestion.change?.op}`)) return [];
+    return [suggestion];
+  });
+}
+
+export async function analyzeDesigner(
+  appIdInput,
+  { provider = getAiProvider(), timeoutMs = Number(process.env.AI_TIMEOUT_MS) || DEFAULT_TIMEOUT_MS } = {},
+) {
+  const appId = validateAppId(appIdInput);
+  await hydrateDesignerLayout(appId);
+  const layout = findDesignerLayout(appId);
+  if (!layout) throw notFoundError("No existe ese formulario en el Designer.");
+
+  const fields = toDesignerFields(layout.elements);
+  const ruleSuggestions = runDesignerRules(fields);
+
+  const started = Date.now();
+  let aiSuggestions = [];
+  let aiAvailable = true;
+  try {
+    const raw = await withTimeout(provider.suggestDesigner({ fields, known: ruleSuggestions }), timeoutMs);
+    aiSuggestions = validateAiSuggestions(raw, fields, ruleSuggestions);
+  } catch {
+    aiAvailable = false;
+  }
+
+  return {
+    appId,
+    aiAvailable,
+    provider: provider.name,
+    promptVersion: provider.promptVersion,
+    latencyMs: Date.now() - started,
+    suggestions: [
+      ...ruleSuggestions.map((suggestion, index) => ({ id: `rules-${index + 1}`, source: "rules", ...suggestion })),
+      ...aiSuggestions.map((suggestion, index) => ({ id: `ai-${index + 1}`, source: "ai", ...suggestion })),
+    ],
+  };
+}
