@@ -95,6 +95,7 @@ export async function findSession(hash) {
       SELECT
         a.Id,
         u.full_name AS Name,
+        u.role_id AS RoleId,
         r.name AS Role
       FROM dbo.AuthSessions AS s
       INNER JOIN dbo.AuthUsers AS a
@@ -129,6 +130,7 @@ export function publicUser(user) {
     id: user.Id,
     name: user.Name,
     role: user.Role,
+    roleId: user.RoleId,
     initials: user.Name
       .trim()
       .split(/\s+/)

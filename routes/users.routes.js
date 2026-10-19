@@ -1,13 +1,16 @@
+
 import { Router } from 'express';
 
 import {
   getUsers,
   getRoles,
-  assignUserRole
+  assignUserRole,
+  postUser
 } from '../controllers/users.controller.js';
 
 import {
   requireAuth,
+  requireRole,
   sameOrigin
 } from '../middlewares/auth.js';
 
@@ -18,33 +21,32 @@ router.use((req, res, next) => {
   next();
 });
 
-/**
- * US02.1
- * Lista de usuarios.
- */
 router.get(
   '/',
   requireAuth,
+  requireRole(2),
   getUsers
 );
 
-/**
- * US02.2
- * Obtiene los roles disponibles.
- */
 router.get(
   '/roles',
   requireAuth,
+  requireRole(2),
   getRoles
 );
 
-/**
- * US02.2
- * Asigna un rol a un usuario.
- */
+router.post(
+  '/',
+  requireAuth,
+  requireRole(2),
+  sameOrigin,
+  postUser
+);
+
 router.put(
   '/:id/role',
   requireAuth,
+  requireRole(2),
   sameOrigin,
   assignUserRole
 );
