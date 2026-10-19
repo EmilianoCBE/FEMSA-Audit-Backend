@@ -23,12 +23,17 @@ export function toDesignerFields(elements = []) {
   }));
 }
 
-function withTimeout(promise, timeoutMs) {
+/** Corre la llamada al proveedor con límite de tiempo; al vencer, también cancela la petición (AbortSignal). */
+function withTimeout(run, timeoutMs) {
+  const controller = new AbortController();
   let timer;
   const timeout = new Promise((_, reject) => {
-    timer = setTimeout(() => reject(new Error(`La IA no respondió en ${timeoutMs} ms.`)), timeoutMs);
+    timer = setTimeout(() => {
+      controller.abort();
+      reject(new Error(`La IA no respondió en ${timeoutMs} ms.`));
+    }, timeoutMs);
   });
-  return Promise.race([promise, timeout]).finally(() => clearTimeout(timer));
+  return Promise.race([run(controller.signal), timeout]).finally(() => clearTimeout(timer));
 }
 
 /**
@@ -69,7 +74,10 @@ export async function analyzeDesigner(
   let aiSuggestions = [];
   let aiAvailable = true;
   try {
-    const raw = await withTimeout(provider.suggestDesigner({ fields, known: ruleSuggestions }), timeoutMs);
+    const raw = await withTimeout(
+      (signal) => provider.suggestDesigner({ fields, known: ruleSuggestions }, { signal }),
+      timeoutMs,
+    );
     aiSuggestions = validateAiSuggestions(raw, fields, ruleSuggestions);
   } catch {
     aiAvailable = false;
