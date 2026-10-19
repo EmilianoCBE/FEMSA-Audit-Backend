@@ -4,9 +4,9 @@ const userColumns = `
   a.Id,
   a.Username,
   a.Email,
-  a.Name,
+  u.full_name AS Name,
   a.PasswordHash,
-  a.IsActive,
+  CAST(CASE WHEN a.IsActive = 1 AND u.is_active = 1 THEN 1 ELSE 0 END AS bit) AS IsActive,
   a.UserId,
   u.role_id,
   r.name AS Role
@@ -94,7 +94,8 @@ export async function findSession(hash) {
     .query(`
       SELECT
         a.Id,
-        a.Name,
+        u.full_name AS Name,
+        u.role_id AS RoleId,
         r.name AS Role
       FROM dbo.AuthSessions AS s
       INNER JOIN dbo.AuthUsers AS a
@@ -129,6 +130,7 @@ export function publicUser(user) {
     id: user.Id,
     name: user.Name,
     role: user.Role,
+    roleId: user.RoleId,
     initials: user.Name
       .trim()
       .split(/\s+/)

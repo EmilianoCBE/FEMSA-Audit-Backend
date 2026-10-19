@@ -3,6 +3,8 @@
 // Cuando el equipo defina el esquema de BD, este archivo debe cambiarse por consultas a Azure SQL.
 
 const layoutDesignerStore = new Map();
+// Layouts cuyo lienzo ya se cargó desde la última versión guardada o se editó en esta ejecución del servidor.
+const hydratedLayoutIds = new Set();
 
 const getCurrentDateIso = () => new Date().toISOString();
 const createDesignerId = prefix => `${prefix}_${Date.now()}_${Math.random().toString(16).slice(2, 8)}`;
@@ -66,6 +68,7 @@ export function createDesignerLayout({ name, elements }) {
   };
 
   layoutDesignerStore.set(newDesignerLayout.id, newDesignerLayout);
+  hydratedLayoutIds.add(newDesignerLayout.id);
   return copyDesignerLayout(newDesignerLayout);
 }
 
@@ -75,8 +78,18 @@ export function saveDesignerCanvas(layoutId, elements) {
 
   selectedDesignerLayout.elements = normalizeDesignerElements(elements);
   selectedDesignerLayout.updatedAt = getCurrentDateIso();
+  hydratedLayoutIds.add(layoutId);
 
   return copyDesignerLayout(selectedDesignerLayout);
+}
+
+/** true si el layout existe y su lienzo aún no se ha cargado desde las versiones en esta ejecución. */
+export function needsDesignerHydration(layoutId) {
+  return layoutDesignerStore.has(layoutId) && !hydratedLayoutIds.has(layoutId);
+}
+
+export function markDesignerHydrated(layoutId) {
+  hydratedLayoutIds.add(layoutId);
 }
 
 function normalizeDesignerElements(elements) {

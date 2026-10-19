@@ -6,20 +6,23 @@ import { HttpError } from '../utils/httpErrors.js';
 
 const transactionCookie = 'femsa_entra';
 const keys = new Map();
-function configuration() {
+function configuration({ optional = false } = {}) {
   const tenant = process.env.ENTRA_TENANT_ID;
   const clientId = process.env.ENTRA_CLIENT_ID;
   const secret = process.env.ENTRA_CLIENT_SECRET;
   const redirect = process.env.ENTRA_REDIRECT_URI;
   const signingSecret = process.env.AUTH_SECRET;
   if (!tenant || !/^[a-f0-9-]{36}$/i.test(tenant) || !clientId || !secret || !redirect || !signingSecret || signingSecret.length < 32) {
+    if (optional) return null;
     throw new HttpError(503, 'El acceso con Entra ID aún no está configurado. Contacta al administrador.');
   }
   return { tenant, clientId, secret, redirect, signingKey: new TextEncoder().encode(signingSecret),
     authority: `https://login.microsoftonline.com/${tenant}/oauth2/v2.0` };
 }
 export async function entraStart(req, res) {
-  const config = configuration();
+  const config = configuration({ optional: true });
+  // Hasta vincular la aplicación con Entra, solo abrir el portal de Microsoft.
+  if (!config) return res.redirect('https://myaccount.microsoft.com/');
   const state = randomBytes(32).toString('base64url');
   const nonce = randomBytes(32).toString('base64url');
   const verifier = randomBytes(32).toString('base64url');

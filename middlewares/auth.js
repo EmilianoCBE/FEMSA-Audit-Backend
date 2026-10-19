@@ -17,3 +17,19 @@ export function sameOrigin(req, res, next) {
   if (req.headers['sec-fetch-site'] === 'cross-site') throw new HttpError(403, 'Origen no permitido.');
   next();
 }
+
+export function requireRole(...allowedRoleIds) {
+  return (req, res, next) => {
+    if (
+      !req.user ||
+      !allowedRoleIds.includes(Number(req.user.roleId))
+    ) {
+      throw new HttpError(
+        403,
+        'No tienes permisos para realizar esta operación.'
+      );
+    }
+
+    next();
+  };
+}
