@@ -76,8 +76,16 @@ tests/            → pruebas con node --test
 | GET | `/api/designer/layouts/:layoutId` | US03 Magda: obtiene un layout con sus elementos del canvas |
 | POST | `/api/designer/layouts` | US03 Magda: crea un layout/módulo visual configurable |
 | PUT | `/api/designer/layouts/:layoutId/canvas` | US03 Magda: guarda posiciones y configuración después del drag & drop |
+| GET | `/api/apps/:appId/versions` | US11 Rafael: historial de versiones de la aplicación (sin la configuración) |
+| GET | `/api/apps/:appId/versions/:versionId` | US11 Rafael: detalle de una versión con su `config` completa |
+| POST | `/api/apps/:appId/versions` | US11 Rafael: guarda `{ config, changes[] }` como nuevo borrador (`v1`, `v2`, …) |
+| POST | `/api/apps/:appId/versions/:versionId/publish` | US11 Rafael: publica un borrador; la vigente anterior pasa a archivada |
+| POST | `/api/apps/:appId/versions/:versionId/restore` | US11 Rafael: crea un borrador nuevo con la configuración de esa versión |
 
 Los errores responden `{ "msg": "..." }` con su código HTTP.
+
+Las rutas `/api/apps/*` requieren sesión. Antes de usarlas crea la tabla con `npm run versions:migrate`
+(requiere haber corrido `npm run auth:migrate`). `appId` es el id de la plantilla del Designer.
 
 ### Al agregar tablas y endpoints
 
