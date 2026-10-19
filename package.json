@@ -16,7 +16,8 @@
     "auth:migrate": "node scripts/migrate-auth.js",
     "auth:create-user": "node scripts/create-user.js",
     "versions:migrate": "node scripts/migrate-versions.js",
-    "ai:check": "node scripts/ai-check.js"
+    "ai:check": "node scripts/ai-check.js",
+    "ai:migrate": "node scripts/migrate-ai.js"
   },
   "dependencies": {
     "@google/genai": "^2.30.0",
