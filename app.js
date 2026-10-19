@@ -7,8 +7,8 @@ import authRoutes from "./routes/auth.routes.js";
 import usersRoutes from "./routes/users.routes.js";
 import riskRoutes from "./routes/risk.routes.js";
 import riskEvaluationRoutes from "./routes/riskEvaluation.routes.js";
-import designerRoutes from "./routes/designer.routes.js";
 import riskLibraryRoutes from "./routes/riskLibrary.routes.js";
+import designerRoutes from "./routes/designer.routes.js";
 
 const app = express();
 
