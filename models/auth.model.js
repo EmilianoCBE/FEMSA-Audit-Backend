@@ -9,7 +9,8 @@ const userColumns = `
   a.IsActive,
   a.UserId,
   u.role_id,
-  r.name AS Role
+  r.name AS Role,
+  r.code AS RoleCode
 `;
 
 export async function findUserByIdentifier(identifier) {
@@ -95,7 +96,10 @@ export async function findSession(hash) {
       SELECT
         a.Id,
         a.Name,
-        r.name AS Role
+        a.UserId,
+        u.role_id,
+        r.name AS Role,
+        r.code AS RoleCode
       FROM dbo.AuthSessions AS s
       INNER JOIN dbo.AuthUsers AS a
         ON a.Id = s.UserId
@@ -127,8 +131,11 @@ export async function deleteSession(hash) {
 export function publicUser(user) {
   return {
     id: user.Id,
+    userId: user.UserId,
     name: user.Name,
     role: user.Role,
+    roleId: user.role_id,
+    roleCode: user.RoleCode,
     initials: user.Name
       .trim()
       .split(/\s+/)
