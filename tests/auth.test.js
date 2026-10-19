@@ -11,7 +11,7 @@ let user, server, base, originalConnect;
 before(async () => {
   Object.assign(process.env, { DB_SERVER: 'test', DB_NAME: 'test', DB_USER: 'test', DB_PASSWORD: 'test', WEB_ORIGIN: 'http://127.0.0.1:5173' });
   delete process.env.ENTRA_TENANT_ID;
-  user = { Id: '00000000-0000-4000-8000-000000000001', Username: 'auditor', Email: 'auditor@example.com', Name: 'Ana Pérez', Role: 'Auditor', IsActive: true, PasswordHash: await hashPassword('UnaClaveSegura123!') };
+  user = { Id: '00000000-0000-4000-8000-000000000001', Username: 'auditor', Email: 'auditor@example.com', Name: 'Ana Pérez', UserId: 7, role_id: 6, Role: 'Auditor', RoleCode: 'auditor', IsActive: true, PasswordHash: await hashPassword('UnaClaveSegura123!') };
   originalConnect = sql.ConnectionPool.prototype.connect;
   sql.ConnectionPool.prototype.connect = async function () {
     return { close: async () => {}, request() {
@@ -19,6 +19,7 @@ before(async () => {
       return { input(name, type, value) { values[name] = value; return this; }, async query(query) {
         if (/WHERE\s+(a\.)?(Email|Username)\s*=/.test(query)) return { recordset: [user.Username, user.Email].includes(values.identifier) ? [user] : [] };
         if (query.includes('INSERT INTO dbo.AuthSessions')) { sessions.set(values.hash, { expiresAt: values.expiresAt }); return { recordset: [] }; }
+        if (query.includes('FROM dbo.ROLE_PERMISSION')) return { recordset: values.roleId === user.role_id ? [{ permission_id: 1, name: 'designer.view', module: 'designer' }] : [] };
         if (query.includes('JOIN dbo.AuthUsers')) {
           const session = sessions.get(values.hash);
           return { recordset: session && session.expiresAt > new Date() && user.IsActive ? [user] : [] };
@@ -71,7 +72,13 @@ test('login por usuario y email, cookie HttpOnly, sesión y logout', async () =>
     assert.match(cookie, /HttpOnly/i);
     assert.match(cookie, /SameSite=Lax/i);
     const headers = { Cookie: cookie.split(';')[0] };
-    assert.equal((await fetch(base + '/me', { headers })).status, 200);
+    const me = await fetch(base + '/me', { headers });
+    assert.equal(me.status, 200);
+    const profile = (await me.json()).user;
+    assert.equal(profile.userId, 7);
+    assert.equal(profile.roleId, 6);
+    assert.equal(profile.roleCode, 'auditor');
+    assert.deepEqual(profile.permissions, [{ name: 'designer.view', module: 'designer' }]);
     assert.equal((await post('/logout', {}, headers)).status, 200);
     assert.equal((await fetch(base + '/me', { headers })).status, 401);
   }
