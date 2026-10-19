@@ -32,9 +32,9 @@ app.use("/api/auth", authRoutes);
 app.use("/api/users", usersRoutes);
 app.use("/api/risks", riskRoutes);
 app.use("/api/risk-evaluations", riskEvaluationRoutes);
+app.use("/api/risk-library", riskLibraryRoutes);
 app.use('/api/designer', designerRoutes);
 app.use("/api", indexRoutes);
-app.use("/api/risk-library", riskLibraryRoutes);
 
 app.use(notFound);
 app.use(errorHandler);
