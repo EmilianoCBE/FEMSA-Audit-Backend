@@ -46,6 +46,10 @@ function withTimeout(run, timeoutMs) {
  * Descarta lo que la IA inventó: formato inválido, campos que no existen o sugerencias que repiten una regla.
  * La IA solo propone, así que una respuesta mala se ignora en lugar de romper la pantalla.
  */
+function withoutFieldId({ fieldId: _ignored, ...rest }) {
+  return rest;
+}
+
 export function validateAiSuggestions(raw, fields, ruleSuggestions = []) {
   const parsed = providerResponseSchema.safeParse(raw);
   if (!parsed.success) return [];
@@ -54,9 +58,13 @@ export function validateAiSuggestions(raw, fields, ruleSuggestions = []) {
   const covered = new Set(ruleSuggestions.map((suggestion) => `${suggestion.fieldId}:${suggestion.change?.op}`));
 
   return parsed.data.suggestions.flatMap((candidate) => {
-    const result = suggestionSchema.safeParse(candidate);
+    // Agregar un campo no apunta a uno existente: si el modelo pega un fieldId ahí, se ignora.
+    const normalized = candidate?.change?.op === "add-field" ? withoutFieldId(candidate) : candidate;
+    const result = suggestionSchema.safeParse(normalized);
     if (!result.success) return [];
     const suggestion = result.data;
+    // Un campo o componente sugerido sin cambio concreto no se puede aceptar: se descarta.
+    if (suggestion.kind !== "inconsistency" && !suggestion.change) return [];
     const targets = [suggestion.fieldId, suggestion.change?.fieldId].filter(Boolean);
     if (targets.some((id) => !fieldIds.has(id))) return [];
     if (suggestion.fieldId && covered.has(`${suggestion.fieldId}:${suggestion.change?.op}`)) return [];
@@ -80,11 +88,16 @@ export async function analyzeDesigner(
   let aiSuggestions = [];
   let aiAvailable = true;
   try {
-    const raw = await withTimeout(
-      (signal) => provider.suggestDesigner({ fields, known: ruleSuggestions }, { signal }),
-      timeoutMs,
-    );
-    aiSuggestions = validateAiSuggestions(raw, fields, ruleSuggestions);
+    aiSuggestions = await withTimeout(async (signal) => {
+      // Si una respuesta no deja ninguna sugerencia válida y queda tiempo, se pide una vez más.
+      let valid = [];
+      for (let attempt = 0; attempt < 2; attempt++) {
+        const raw = await provider.suggestDesigner({ fields, known: ruleSuggestions }, { signal });
+        valid = validateAiSuggestions(raw, fields, ruleSuggestions);
+        if (valid.length > 0 || Date.now() - started > timeoutMs / 2) break;
+      }
+      return valid;
+    }, timeoutMs);
   } catch {
     aiAvailable = false;
   }

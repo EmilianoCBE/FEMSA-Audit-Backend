@@ -106,3 +106,52 @@ test("sin GEMINI_API_KEY el proveedor gemini se reporta como no disponible", asy
   await assert.rejects(provider.suggestDesigner({ fields, known: [] }), /GEMINI_API_KEY/);
   assert.equal(getAiProvider({}).name, "mock");
 });
+
+test("US15 se ignora un fieldId pegado a add-field y se descartan campos sugeridos sin cambio", () => {
+  const add = { op: "add-field", type: "date", label: "Fecha de detección", section: "identificacion" };
+  const result = validateAiSuggestions(
+    {
+      suggestions: [
+        {
+          kind: "field",
+          title: "Agregar fecha",
+          reason: "Para medir antigüedad.",
+          confidence: "alta",
+          fieldId: "titulo",
+          change: add,
+        },
+        { kind: "field", title: "Agregar área", reason: "Para segmentar.", confidence: "alta" },
+        { kind: "component", title: "Cambiar tipo", reason: "Mejor componente.", confidence: "media" },
+      ],
+    },
+    fields,
+  );
+  assert.equal(result.length, 1);
+  assert.equal(result[0].fieldId, undefined);
+  assert.deepEqual(result[0].change, add);
+});
+
+test("US15 si la primera respuesta no trae nada válido, se reintenta una vez", async () => {
+  const valid = {
+    kind: "field",
+    title: "Agregar causa",
+    reason: "Explica el origen.",
+    confidence: "media",
+    change: { op: "add-field", type: "long-text", label: "Causa", section: "evaluacion" },
+  };
+  let calls = 0;
+  const provider = createGeminiProvider({
+    client: fakeClient(() => {
+      calls += 1;
+      return {
+        text: JSON.stringify({
+          suggestions: calls === 1 ? [{ kind: "field", title: "x", reason: "y", confidence: "alta" }] : [valid],
+        }),
+      };
+    }),
+  });
+  const result = await analyzeDesigner("layout dummy", { provider, timeoutMs: 5000 });
+  assert.equal(calls, 2);
+  assert.equal(result.aiAvailable, true);
+  assert.ok(result.suggestions.some((s) => s.source === "ai" && s.title === "Agregar causa"));
+});
