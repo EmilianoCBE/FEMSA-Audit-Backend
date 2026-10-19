@@ -1,10 +1,22 @@
 import assert from "node:assert/strict";
-import { after, before, test } from "node:test";
+import { after, before, mock, test } from "node:test";
+import { versionsRepository } from "../repositories/versions.repository.js";
 
 let server;
 let base;
 
+// Última versión guardada de "layout dummy": el lienzo debe cargarse desde aquí y no desde la plantilla por defecto.
+const savedElements = [
+  { id: "titulo", type: "short-text", x: 24, y: 24, width: 280, height: 48, config: { label: "Titulo del hallazgo" } },
+  { id: "monto", type: "number", x: 24, y: 96, width: 200, height: 48, config: { label: "Monto" } },
+  { id: "fecha", type: "date", x: 24, y: 168, width: 200, height: 48, config: { label: "Fecha" } },
+];
+
 before(async () => {
+  mock.method(versionsRepository, "list", async (appId) => (appId === "layout dummy" ? [{ id: 9, number: 6 }] : []));
+  mock.method(versionsRepository, "findById", async (appId, id) =>
+    appId === "layout dummy" && id === 9 ? { id, config: { elements: savedElements } } : null,
+  );
   Object.assign(process.env, {
     DB_SERVER: "test",
     DB_NAME: "test",
@@ -24,6 +36,7 @@ before(async () => {
 
 after(async () => {
   if (server) await new Promise(resolve => server.close(resolve));
+  mock.restoreAll();
 });
 
 const jsonHeaders = { "Content-Type": "application/json" };
@@ -35,6 +48,19 @@ test("US03 lista layouts disponibles para el Designer", async () => {
   const body = await response.json();
   assert.ok(Array.isArray(body.layouts));
   assert.equal(body.layouts[0].id, "layout dummy");
+});
+
+test("US11 al arrancar, el lienzo se carga desde la última versión guardada", async () => {
+  const response = await fetch(`${base}/layouts/${encodeURIComponent("layout dummy")}`);
+
+  assert.equal(response.status, 200);
+  const { layout } = await response.json();
+  assert.deepEqual(
+    layout.elements.map(element => element.id),
+    savedElements.map(element => element.id),
+  );
+  // Solo se carga una vez por ejecución: no vuelve a consultar las versiones.
+  assert.equal(versionsRepository.list.mock.callCount(), 1);
 });
 
 test("US03 crea layout y guarda elementos arrastrados al canvas", async () => {
