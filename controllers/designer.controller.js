@@ -4,6 +4,7 @@ import {
   listDesignerLayouts,
   saveDesignerCanvas,
 } from "../models/designer.model.js";
+import { hydrateDesignerLayout } from "../services/designer.service.js";
 
 const allowedElementTypes = new Set(["short-text", "long-text", "catalog", "calculated", "date", "number", "section"]);
 
@@ -51,12 +52,14 @@ function validateElements(elements) {
 }
 
 // US03 - Magda Colunga: endpoint para listar módulos/layouts disponibles en el Designer.
-export function getDesignerLayouts(req, res) {
+export async function getDesignerLayouts(req, res) {
+  for (const layout of listDesignerLayouts()) await hydrateDesignerLayout(layout.id);
   res.json({ layouts: listDesignerLayouts() });
 }
 
 // US03 - Magda Colunga: endpoint para cargar un layout con sus elementos del canvas.
-export function getDesignerLayout(req, res) {
+export async function getDesignerLayout(req, res) {
+  await hydrateDesignerLayout(req.params.layoutId);
   const layout = findDesignerLayout(req.params.layoutId);
   if (!layout) return res.status(404).json({ message: "Layout no encontrado." });
 
