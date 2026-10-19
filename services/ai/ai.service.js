@@ -13,6 +13,10 @@ import { changeSchema, providerResponseSchema, suggestionSchema } from "./schema
 
 const DEFAULT_TIMEOUT_MS = 8000;
 
+/** SQL Server 208 = "Invalid object name": falta la tabla porque no se corrió la migración. */
+const isMissingTable = (error) => error?.number === 208 || /Invalid object name/i.test(error?.message ?? "");
+const MISSING_TABLE_MESSAGE = "Falta la tabla dbo.AppAiRecommendations: ejecuta npm run ai:migrate.";
+
 /** Solo la estructura del formulario: es lo único que sale hacia el proveedor de IA (RNF-13). */
 export function toDesignerFields(elements = []) {
   return elements.map((element) => ({
@@ -109,8 +113,11 @@ export async function analyzeDesigner(
       shown = saved.map(toPublicSuggestion);
       recorded = true;
     }
-  } catch {
+  } catch (error) {
     recorded = false;
+    console.warn(
+      `[ai] No se guardaron las sugerencias: ${isMissingTable(error) ? MISSING_TABLE_MESSAGE : error.message}`,
+    );
   }
 
   return {
@@ -146,7 +153,13 @@ export async function decideRecommendation(idInput, body, user) {
     appliedChange = parsed.data;
   }
 
-  const existing = await aiRecommendationsRepository.findById(id);
+  let existing;
+  try {
+    existing = await aiRecommendationsRepository.findById(id);
+  } catch (error) {
+    if (isMissingTable(error)) throw new HttpError(503, MISSING_TABLE_MESSAGE);
+    throw error;
+  }
   if (!existing) throw notFoundError("No existe esa sugerencia.");
   if (decision !== "rejected" && !existing.change) {
     throw badRequest("Esta sugerencia no trae un cambio que se pueda aplicar; solo se puede rechazar.");
@@ -166,7 +179,13 @@ const emptyCounts = () => ({ total: 0, pending: 0, accepted: 0, rejected: 0, rep
 /** Métricas del asistente para un formulario: aceptación por origen (reglas / IA) y latencia promedio de la IA. */
 export async function getDesignerMetrics(appIdInput) {
   const appId = validateAppId(appIdInput);
-  const rows = await aiRecommendationsRepository.metrics(appId);
+  let rows;
+  try {
+    rows = await aiRecommendationsRepository.metrics(appId);
+  } catch (error) {
+    if (isMissingTable(error)) throw new HttpError(503, MISSING_TABLE_MESSAGE);
+    throw error;
+  }
   const bySource = { rules: emptyCounts(), ai: emptyCounts() };
   let aiLatency = null;
 

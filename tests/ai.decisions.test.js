@@ -228,3 +228,18 @@ test("métricas de aceptación por origen", async () => {
   assert.equal(typeof metrics.avgAiLatencyMs, "number");
   assert.equal((await fetch(`${api}/ai/designer/metrics`, { headers })).status, 400);
 });
+
+test("si falta la tabla, métricas y decisiones responden 503 con la instrucción", async () => {
+  const missing = Object.assign(new Error("Invalid object name 'dbo.AppAiRecommendations'."), { number: 208 });
+  mock.method(aiRecommendationsRepository, "metrics", async () => {
+    throw missing;
+  });
+  mock.method(aiRecommendationsRepository, "findById", async () => {
+    throw missing;
+  });
+  const metrics = await fetch(`${api}/ai/designer/metrics?appId=${encodeURIComponent(appId)}`, { headers });
+  assert.equal(metrics.status, 503);
+  assert.match((await metrics.json()).msg, /npm run ai:migrate/);
+  const decision = await decide("1", { decision: "rejected" });
+  assert.equal(decision.status, 503);
+});
