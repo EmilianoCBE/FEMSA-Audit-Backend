@@ -8,7 +8,8 @@ import {
   SYSTEM_INSTRUCTION,
 } from "../prompts/designer.v1.js";
 
-export const DEFAULT_GEMINI_MODEL = "gemini-flash-latest";
+// Lite: en pruebas del 2026-10-18 respondió en 1-2 s (meta < 10 s); gemini-flash-latest tardó 15-29 s y daba 503.
+export const DEFAULT_GEMINI_MODEL = "gemini-flash-lite-latest";
 
 /** `client` se puede inyectar en las pruebas para no llamar a Google. */
 export function createGeminiProvider({ apiKey, model = DEFAULT_GEMINI_MODEL, client } = {}) {

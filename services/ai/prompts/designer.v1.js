@@ -22,9 +22,11 @@ Reglas:
   - add-field (type, label, section): agregar un campo nuevo.
 - "fieldId" debe ser exactamente uno de los ids que recibes. Nunca inventes ids.
 - Tipos permitidos: ${FIELD_TYPES.join(", ")}. Secciones: ${SECTIONS.join(", ")}.
-- No repitas los problemas de "known": ya se los mostramos al usuario.
-- Piensa en lo que un hallazgo de auditoría necesita: fecha de detección, área o unidad auditada, criterio incumplido,
-  riesgo o severidad, causa, recomendación, responsable y fecha compromiso del plan de acción.
+- "known" son revisiones automáticas que el usuario ya está viendo. No propongas nada sobre los campos que aparecen
+  ahí (ni el mismo cambio ni otro distinto); concéntrate en lo que falta.
+- Un hallazgo de auditoría completo necesita: fecha de detección, área o unidad auditada, criterio incumplido, causa,
+  riesgo o severidad, recomendación, responsable y fecha compromiso del plan de acción. Revisa cuáles faltan en
+  "fields" (por su etiqueta) y propón agregarlos con add-field; solo responde una lista vacía si no falta ninguno.
 - No inventes datos de personas, empresas ni montos.`;
 
 /** Lo único que se envía al modelo: estructura del formulario y lo que ya detectaron las reglas (RNF-13). */
@@ -38,7 +40,7 @@ export function buildDesignerPrompt({ fields, known = [] }) {
       section,
       formula,
     })),
-    known: known.map(({ title, fieldId }) => ({ title, fieldId: fieldId ?? null })),
+    known: known.map(({ title, fieldId, change }) => ({ title, fieldId: fieldId ?? null, change: change?.op ?? null })),
   });
 }
 
