@@ -5,7 +5,7 @@ La página `/login` prioriza Entra ID y ofrece usuario/email y contraseña como 
 ## Preparar acceso local
 
 1. Configura `DB_SERVER`, `DB_NAME`, `DB_USER`, `DB_PASSWORD` en `.env`.
-2. Agrega las variables de `.env.auth.example` a ese mismo archivo. Para acceso local basta con `WEB_ORIGIN` y `NODE_ENV`.
+2. Agrega las variables de `.env.auth.example` a ese mismo archivo. Para acceso local con usuario y contraseña no hacen falta (`WEB_ORIGIN` y `NODE_ENV` ya vienen en `.env.example`).
 3. Ejecuta `npm run auth:migrate`. Requiere las tablas de negocio `dbo.USER` y `dbo.ROLE`. Crea `dbo.AuthUsers` y `dbo.AuthSessions` sin modificar tablas existentes; puede ejecutarse nuevamente.
 4. Ejecuta `npm run auth:create-user` en una terminal. Solicita usuario, email, nombre, rol y contraseña oculta (mínimo 12 caracteres).
 5. Ejecuta `npm run dev` aquí y también en el repo del frontend ([FEMSA-Audit](https://github.com/EmilianoCBE/FEMSA-Audit)); abre `http://127.0.0.1:5173/login`. Usa este mismo host en `WEB_ORIGIN`.

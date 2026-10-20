@@ -93,6 +93,7 @@ tests/            → pruebas con node --test
 | POST | `/api/apps/:appId/versions` | US11 Rafael: guarda `{ config, changes[] }` como nuevo borrador (`v1`, `v2`, …) |
 | POST | `/api/apps/:appId/versions/:versionId/publish` | US11 Rafael: publica un borrador; la vigente anterior pasa a archivada |
 | POST | `/api/apps/:appId/versions/:versionId/restore` | US11 Rafael: crea un borrador nuevo con la configuración de esa versión |
+| POST | `/api/ai/designer/analyze` | US15–US17 Emiliano: recibe `{ appId }` y devuelve sugerencias explicadas (reglas + IA) para un formulario del Designer; no cambia nada |
 
 Los errores responden `{ "msg": "..." }` con su código HTTP.
 
@@ -102,6 +103,10 @@ compartida, pero todavía no tienen migración en `db/migrations/` (pendiente).
 
 Las rutas `/api/apps/*` requieren sesión. Antes de usarlas crea la tabla con `npm run versions:migrate`
 (requiere haber corrido `npm run auth:migrate`). `appId` es el id de la plantilla del Designer.
+
+El asistente de IA (`/api/ai/*`, requiere sesión) usa `AI_PROVIDER=mock` por defecto: responde sin llamar a ningún
+servicio externo. Las reglas de inconsistencias siempre responden; si el proveedor falla o tarda más de `AI_TIMEOUT_MS`,
+la respuesta trae `aiAvailable: false` y solo las reglas.
 
 ### Al agregar tablas y endpoints
 

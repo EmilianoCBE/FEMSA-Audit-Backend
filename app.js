@@ -10,6 +10,7 @@ import riskEvaluationRoutes from "./routes/riskEvaluation.routes.js";
 import riskLibraryRoutes from "./routes/riskLibrary.routes.js";
 import designerRoutes from "./routes/designer.routes.js";
 import versionsRoutes from "./routes/versions.routes.js";
+import aiRoutes from "./routes/ai.routes.js";
 
 const app = express();
 
@@ -38,6 +39,7 @@ app.use("/api/risk-evaluations", riskEvaluationRoutes);
 app.use("/api/risk-library", riskLibraryRoutes);
 app.use('/api/designer', designerRoutes);
 app.use("/api/apps", versionsRoutes);
+app.use("/api/ai", aiRoutes);
 app.use("/api", indexRoutes);
 
 app.use(notFound);
