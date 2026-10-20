@@ -13,7 +13,8 @@ export const DEFAULT_OLLAMA_URL = "http://127.0.0.1:11434";
 export const DEFAULT_OLLAMA_MODEL = "qwen3.5:9b";
 // En una laptop la velocidad depende de cuánto texto genera el modelo: con 3 sugerencias se cumple la meta de < 10 s.
 const LOCAL_MAX_SUGGESTIONS = 3;
-const LOCAL_INSTRUCTION = `\n\nEstás corriendo como modelo local: propón como máximo ${LOCAL_MAX_SUGGESTIONS} sugerencias, las más útiles.`;
+const LOCAL_INSTRUCTION = `\n\nEstás corriendo como modelo local: propón como máximo ${LOCAL_MAX_SUGGESTIONS} sugerencias, solo de \
+campos que faltan (add-field). Los campos que ya existen los revisan las reglas automáticas: no propongas cambiarlos.`;
 
 const LOCAL_HOSTS = new Set(["localhost", "127.0.0.1", "[::1]", "::1"]);
 
@@ -61,7 +62,15 @@ function parseContent(text) {
     .trim()
     .replace(/^```(?:json)?\s*/i, "")
     .replace(/\s*```$/, "");
-  return JSON.parse(clean);
+  try {
+    return JSON.parse(clean);
+  } catch (error) {
+    // Algunos modelos locales agregan texto antes o después: se toma solo el bloque JSON.
+    const start = clean.indexOf("{");
+    const end = clean.lastIndexOf("}");
+    if (start === -1 || end <= start) throw error;
+    return JSON.parse(clean.slice(start, end + 1));
+  }
 }
 
 /** `fetchImpl` se puede inyectar en las pruebas para no depender de Ollama. */

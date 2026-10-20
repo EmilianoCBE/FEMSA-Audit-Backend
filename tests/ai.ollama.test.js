@@ -84,6 +84,7 @@ test("US15 pide JSON con esquema, sin razonamiento largo, temperatura baja y mod
   assert.equal(body.keep_alive, "60m");
   assert.match(body.messages[0].content, /Solo propones/);
   assert.match(body.messages[0].content, /máximo 3/);
+  assert.match(body.messages[0].content, /campos que faltan/);
   assert.equal(calls[0].signal, signal);
   assert.equal(validateAiSuggestions(raw, fields).length, 1);
 });
@@ -176,4 +177,11 @@ test("US16 se descarta lo que repite una regla aunque el campo venga solo dentro
     change: { op: "change-field-type", fieldId: "plazo", type: "date" },
   };
   assert.deepEqual(validateAiSuggestions({ suggestions: [repeated] }, fields, [rule]), []);
+});
+
+test("lee el JSON aunque el modelo local agregue texto alrededor", async () => {
+  const content = `Claro, aquí está:\n${JSON.stringify({ suggestions: [add("Causa")] })}\nEspero que ayude.`;
+  const { fetchImpl } = fakeFetch([{ body: { message: { content } } }]);
+  const raw = await createOllamaProvider({ fetchImpl }).suggestDesigner({ fields, known: [] });
+  assert.equal(validateAiSuggestions(raw, fields).length, 1);
 });
