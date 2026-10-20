@@ -113,6 +113,24 @@ Las sugerencias y las decisiones se guardan en `dbo.AppAiRecommendations`: créa
 `npm run auth:migrate`). Si la tabla no existe o la BD falla, el análisis responde igual con `recorded: false`.
 Para usar Gemini: `AI_PROVIDER=gemini` y `GEMINI_API_KEY` en `.env`; verifica con `npm run ai:check`.
 
+## Despliegue (Vercel)
+
+La API es el proyecto `femsa-audit-api` de Vercel (Express detectado como una sola función, `framework: "express"` en
+`vercel.json`). Solo despliega el pipeline (`.github/workflows/ci.yml`): `develop` → staging
+(`femsa-audit-api-staging.vercel.app`), `main` → producción (`femsa-audit-api.vercel.app`). El front llama a `/api` en su
+propio dominio y Vercel lo reenvía a la API, así las cookies de sesión son del mismo sitio.
+
+Requisitos (una sola vez):
+
+- Secrets del repo: `VERCEL_TOKEN`, `VERCEL_ORG_ID`, `VERCEL_PROJECT_ID` (del proyecto `femsa-audit-api`).
+- Variables del proyecto en Vercel (Production y Preview): `DB_*`, `NODE_ENV=production`, `AUTH_SECRET`, `WEB_ORIGIN`,
+  `WEB_ORIGIN_PATTERN`, `AI_PROVIDER=gemini`, `GEMINI_API_KEY` y, si se usa Entra ID, `ENTRA_*`.
+- Azure SQL debe aceptar conexiones desde Vercel (Vercel gratuito no tiene IP fija): regla de firewall que lo permita,
+  autorizada por quien administra la base compartida.
+
+Límite conocido: el lienzo del Designer vive en memoria; en Vercel puede haber varias instancias, así que lo que no se
+guarde como versión puede perderse. Las versiones, evaluaciones, usuarios y decisiones de IA sí están en Azure SQL.
+
 ### Al agregar tablas y endpoints
 
 > Hoy la carpeta `models/` mezcla consultas SQL y reglas de negocio, y las validaciones viven en los controladores.
