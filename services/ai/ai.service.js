@@ -1,15 +1,21 @@
 // US15-US17 - Emiliano Carrizales: asistente de diseño del App Builder (Designer).
 // Junta las reglas (US16, siempre disponibles) con las propuestas del proveedor de IA (US15), valida todo con el esquema
 // y nunca modifica la configuración: solo devuelve propuestas que el usuario acepta o rechaza en el front (US17).
+import { randomUUID } from "node:crypto";
 import { findDesignerLayout } from "../../models/designer.model.js";
-import { notFoundError } from "../../utils/httpErrors.js";
+import { aiRecommendationsRepository } from "../../repositories/aiRecommendations.repository.js";
+import { badRequest, HttpError, notFoundError } from "../../utils/httpErrors.js";
 import { hydrateDesignerLayout } from "../designer.service.js";
 import { validateAppId } from "../versions.service.js";
 import { getAiProvider } from "./providers/index.js";
 import { runDesignerRules } from "./rules/designer.rules.js";
-import { providerResponseSchema, suggestionSchema } from "./schemas.js";
+import { changeSchema, providerResponseSchema, suggestionSchema } from "./schemas.js";
 
 const DEFAULT_TIMEOUT_MS = 8000;
+
+/** SQL Server 208 = "Invalid object name": falta la tabla porque no se corrió la migración. */
+const isMissingTable = (error) => error?.number === 208 || /Invalid object name/i.test(error?.message ?? "");
+const MISSING_TABLE_MESSAGE = "Falta la tabla dbo.AppAiRecommendations: ejecuta npm run ai:migrate.";
 
 /** Solo la estructura del formulario: es lo único que sale hacia el proveedor de IA (RNF-13). */
 export function toDesignerFields(elements = []) {
@@ -68,7 +74,7 @@ export function validateAiSuggestions(raw, fields, ruleSuggestions = []) {
 
 export async function analyzeDesigner(
   appIdInput,
-  { provider = getAiProvider(), timeoutMs = Number(process.env.AI_TIMEOUT_MS) || DEFAULT_TIMEOUT_MS } = {},
+  { provider = getAiProvider(), timeoutMs = Number(process.env.AI_TIMEOUT_MS) || DEFAULT_TIMEOUT_MS, user } = {},
 ) {
   const appId = validateAppId(appIdInput);
   await hydrateDesignerLayout(appId);
@@ -96,15 +102,123 @@ export async function analyzeDesigner(
     aiAvailable = false;
   }
 
+  const latencyMs = Date.now() - started;
+  const suggestions = [
+    ...ruleSuggestions.map((suggestion, index) => ({ id: `rules-${index + 1}`, source: "rules", ...suggestion })),
+    ...aiSuggestions.map((suggestion, index) => ({ id: `ai-${index + 1}`, source: "ai", ...suggestion })),
+  ];
+
+  // US17: cada sugerencia mostrada se guarda para registrar después la decisión del usuario.
+  // Si la BD falla, el asistente sigue respondiendo (recorded: false) con ids temporales.
+  let recorded = false;
+  let shown = suggestions;
+  try {
+    const saved = await aiRecommendationsRepository.createMany({
+      appId,
+      analysisId: randomUUID(),
+      suggestions,
+      provider: provider.name,
+      promptVersion: provider.promptVersion,
+      latencyMs,
+      requestedBy: user?.id,
+    });
+    if (saved.length === suggestions.length) {
+      shown = saved.map(toPublicSuggestion);
+      recorded = true;
+    }
+  } catch (error) {
+    recorded = false;
+    console.warn(
+      `[ai] No se guardaron las sugerencias: ${isMissingTable(error) ? MISSING_TABLE_MESSAGE : error.message}`,
+    );
+  }
+
   return {
     appId,
     aiAvailable,
+    recorded,
     provider: provider.name,
     promptVersion: provider.promptVersion,
-    latencyMs: Date.now() - started,
-    suggestions: [
-      ...ruleSuggestions.map((suggestion, index) => ({ id: `rules-${index + 1}`, source: "rules", ...suggestion })),
-      ...aiSuggestions.map((suggestion, index) => ({ id: `ai-${index + 1}`, source: "ai", ...suggestion })),
-    ],
+    latencyMs,
+    suggestions: shown,
+  };
+}
+
+function toPublicSuggestion(recommendation) {
+  const { id, source, kind, title, reason, confidence, fieldId, change } = recommendation;
+  return { id, source, kind, title, reason, confidence, ...(fieldId && { fieldId }), ...(change && { change }) };
+}
+
+const DECISIONS = ["accepted", "rejected", "replaced"];
+
+/** US17: registra que el usuario aceptó, rechazó o reemplazó una sugerencia. Cada sugerencia se decide una sola vez. */
+export async function decideRecommendation(idInput, body, user) {
+  const id = Number(idInput);
+  if (!Number.isInteger(id) || id <= 0) throw notFoundError("No existe esa sugerencia.");
+
+  const decision = body?.decision;
+  if (!DECISIONS.includes(decision)) throw badRequest(`decision debe ser ${DECISIONS.join(", ")}.`);
+
+  let appliedChange = null;
+  if (decision === "replaced") {
+    const parsed = changeSchema.safeParse(body?.change);
+    if (!parsed.success) throw badRequest("Para reemplazar se requiere el cambio que aplicó el usuario (change).");
+    appliedChange = parsed.data;
+  }
+
+  let existing;
+  try {
+    existing = await aiRecommendationsRepository.findById(id);
+  } catch (error) {
+    if (isMissingTable(error)) throw new HttpError(503, MISSING_TABLE_MESSAGE);
+    throw error;
+  }
+  if (!existing) throw notFoundError("No existe esa sugerencia.");
+  if (decision !== "rejected" && !existing.change) {
+    throw badRequest("Esta sugerencia no trae un cambio que se pueda aplicar; solo se puede rechazar.");
+  }
+
+  const updated = await aiRecommendationsRepository.decide(id, {
+    status: decision,
+    appliedChange,
+    decidedBy: user?.id,
+  });
+  if (!updated) throw new HttpError(409, "Esta sugerencia ya se había decidido.");
+  return { ...toPublicSuggestion(updated), status: updated.status, appliedChange: updated.appliedChange };
+}
+
+const emptyCounts = () => ({ total: 0, pending: 0, accepted: 0, rejected: 0, replaced: 0 });
+
+/** Métricas del asistente para un formulario: aceptación por origen (reglas / IA) y latencia promedio de la IA. */
+export async function getDesignerMetrics(appIdInput) {
+  const appId = validateAppId(appIdInput);
+  let rows;
+  try {
+    rows = await aiRecommendationsRepository.metrics(appId);
+  } catch (error) {
+    if (isMissingTable(error)) throw new HttpError(503, MISSING_TABLE_MESSAGE);
+    throw error;
+  }
+  const bySource = { rules: emptyCounts(), ai: emptyCounts() };
+  let aiLatency = null;
+
+  for (const row of rows) {
+    const counts = bySource[row.source];
+    if (!counts) continue;
+    counts[row.status] += row.total;
+    counts.total += row.total;
+    if (row.source === "ai" && row.avgLatencyMs != null) aiLatency = Math.round(row.avgLatencyMs);
+  }
+
+  const acceptanceRate = (counts) => {
+    const decided = counts.accepted + counts.rejected + counts.replaced;
+    return decided ? Math.round(((counts.accepted + counts.replaced) / decided) * 100) / 100 : null;
+  };
+
+  return {
+    appId,
+    bySource,
+    acceptanceRate: { rules: acceptanceRate(bySource.rules), ai: acceptanceRate(bySource.ai) },
+    avgAiLatencyMs: aiLatency,
   };
 }
