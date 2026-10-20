@@ -72,6 +72,18 @@ tests/            → pruebas con node --test
 | GET | `/api/ping` | `{"msg":"pong"}` |
 | GET | `/api/health` | Estado de la conexión a la base de datos (503 si no responde) |
 | — | `/api/auth/*` | Login, sesión, logout y Microsoft Entra ID (ver [AUTH.md](AUTH.md)) |
+| GET | `/api/users` | US02 Karla: lista de usuarios con su rol (solo Administrador) |
+| GET | `/api/users/roles` | US02 Karla: catálogo de roles (solo Administrador) |
+| POST | `/api/users` | US02 Karla: alta de usuario `{ firstName, lastName, role_id, password }`; genera `nombre.apellido@femsa.com` (con sufijo si existe) (solo Administrador) |
+| PUT | `/api/users/:id/role` | US02 Karla: cambia el rol `{ role_id }`; protege al último administrador activo (solo Administrador) |
+| POST | `/api/risks/classify` | US07 Karla: `{ probability, impact }` (1–5) → puntaje y nivel (Bajo 1–4, Medio 5–9, Alto 10–16, Crítico 17–25) |
+| GET | `/api/risk-library` | US07 Karla: biblioteca de riesgos; filtros `search` y `department` |
+| GET | `/api/risk-library/:id` | US07 Karla: un riesgo de la biblioteca |
+| GET | `/api/risk-evaluations` | US07 Karla: historial paginado; filtros `search`, `department`, `level`, `fromDate`, `toDate`, `page`, `pageSize` |
+| POST | `/api/risk-evaluations` | US07 Karla: guarda `{ riskLibraryId, probability, impact }`; el servidor calcula puntaje y nivel y usa el usuario de la sesión |
+| GET | `/api/risk-evaluations/summary` | US07 Karla: indicadores y datos de las gráficas (mismos filtros, sin paginación) |
+| GET | `/api/risk-evaluations/risk/:riskLibraryId` | US07 Karla: evaluaciones de un riesgo |
+| GET | `/api/risk-evaluations/compare/:riskLibraryId` | US07 Karla: evaluaciones de un riesgo para comparar |
 | GET | `/api/designer/layouts` | US03 Magda: lista layouts disponibles para abrir en el Designer |
 | GET | `/api/designer/layouts/:layoutId` | US03 Magda: obtiene un layout con sus elementos del canvas |
 | POST | `/api/designer/layouts` | US03 Magda: crea un layout/módulo visual configurable |
@@ -86,6 +98,10 @@ tests/            → pruebas con node --test
 | GET | `/api/ai/designer/metrics?appId=` | US17 Emiliano: aceptación por origen (reglas / IA) y latencia promedio de la IA |
 
 Los errores responden `{ "msg": "..." }` con su código HTTP.
+
+Las rutas `/api/users/*`, `/api/risks/*`, `/api/risk-library/*` y `/api/risk-evaluations/*` requieren sesión; las de
+usuarios además el rol Administrador (`role_id` 2). Las tablas `RISK_LIBRARY` y `RISK_EVALUATION` ya existen en la BD
+compartida, pero todavía no tienen migración en `db/migrations/` (pendiente).
 
 Las rutas `/api/apps/*` requieren sesión. Antes de usarlas crea la tabla con `npm run versions:migrate`
 (requiere haber corrido `npm run auth:migrate`). `appId` es el id de la plantilla del Designer.
