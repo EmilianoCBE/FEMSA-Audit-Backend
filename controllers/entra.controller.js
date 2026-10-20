@@ -3,6 +3,7 @@ import { SignJWT, jwtVerify, createRemoteJWKSet } from 'jose';
 import { findUserByEntraId, deleteSession } from '../models/auth.model.js';
 import { cookieOptions, createSession, readCookie, SESSION_COOKIE, tokenHash } from '../utils/session.js';
 import { HttpError } from '../utils/httpErrors.js';
+import { primaryOrigin } from '../utils/origins.js';
 
 const transactionCookie = 'femsa_entra';
 const keys = new Map();
@@ -37,7 +38,7 @@ export async function entraStart(req, res) {
 }
 export async function entraCallback(req, res) {
   res.clearCookie(transactionCookie, cookieOptions());
-  const web = new URL('/login', process.env.WEB_ORIGIN || 'http://127.0.0.1:5173');
+  const web = new URL('/login', primaryOrigin());
   try {
     const config = configuration();
     const cookie = readCookie(req, transactionCookie);
