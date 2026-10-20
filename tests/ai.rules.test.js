@@ -97,14 +97,20 @@ test("US16 con la configuración vigente real (v6) encuentra las inconsistencias
 test("US17 la respuesta de la IA se valida: se descarta lo inventado o mal formado", () => {
   const fields = [field("a", "short-text", "Fecha límite")];
   const rules = componentHintRule(fields);
-  const valid = { kind: "field", title: "Agregar responsable", reason: "Para dar seguimiento.", confidence: "media" };
+  const valid = {
+    kind: "field",
+    title: "Agregar responsable",
+    reason: "Para dar seguimiento.",
+    confidence: "media",
+    change: { op: "add-field", type: "short-text", label: "Responsable", section: "remediacion" },
+  };
   const result = validateAiSuggestions(
     {
       suggestions: [
         valid,
         { ...valid, reason: "" }, // sin explicación (RNF-12)
         { ...valid, change: { op: "delete-everything" } }, // operación no permitida
-        { ...valid, fieldId: "no-existe" }, // campo inventado
+        { kind: "inconsistency", title: "x", reason: "y", confidence: "alta", fieldId: "no-existe" }, // campo inventado
         { ...valid, change: { op: "rename-field", fieldId: "fantasma", label: "x" } },
         { ...valid, fieldId: "a", change: { op: "change-field-type", fieldId: "a", type: "date" } }, // repite una regla
         "texto suelto",
