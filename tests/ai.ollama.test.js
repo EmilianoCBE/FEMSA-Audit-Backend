@@ -158,3 +158,22 @@ test("US15 no se proponen dos veces el mismo campo ni uno que ya existe", () => 
     ["Riesgo o severidad", "Causa"],
   );
 });
+
+test("US16 se descarta lo que repite una regla aunque el campo venga solo dentro de change", () => {
+  const rule = {
+    kind: "component",
+    title: "Usar Fecha",
+    reason: "r",
+    confidence: "media",
+    fieldId: "plazo",
+    change: { op: "change-field-type", fieldId: "plazo", type: "date" },
+  };
+  const repeated = {
+    kind: "component",
+    title: "Cambiar a fecha",
+    reason: "Formato correcto.",
+    confidence: "media",
+    change: { op: "change-field-type", fieldId: "plazo", type: "date" },
+  };
+  assert.deepEqual(validateAiSuggestions({ suggestions: [repeated] }, fields, [rule]), []);
+});

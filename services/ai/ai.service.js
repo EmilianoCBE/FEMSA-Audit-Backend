@@ -75,7 +75,9 @@ export function validateAiSuggestions(raw, fields, ruleSuggestions = []) {
     if (suggestion.kind === "inconsistency" && !suggestion.fieldId) return [];
     const targets = [suggestion.fieldId, suggestion.change?.fieldId].filter(Boolean);
     if (targets.some((id) => !fieldIds.has(id))) return [];
-    if (suggestion.fieldId && covered.has(`${suggestion.fieldId}:${suggestion.change?.op}`)) return [];
+    // Repite una regla: mismo campo y misma operación (el campo puede venir arriba o solo dentro de change).
+    const target = suggestion.fieldId ?? suggestion.change?.fieldId;
+    if (target && covered.has(`${target}:${suggestion.change?.op}`)) return [];
     if (suggestion.change?.op === "add-field") {
       const key = labelKey(suggestion.change.label);
       const words = key
