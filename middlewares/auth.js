@@ -1,6 +1,7 @@
 import { findSession, publicUser } from '../models/auth.model.js';
 import { readCookie, SESSION_COOKIE, tokenHash } from '../utils/session.js';
 import { HttpError } from '../utils/httpErrors.js';
+import { isAllowedOrigin } from '../utils/origins.js';
 
 export async function requireAuth(req, res, next) {
   const token = readCookie(req, SESSION_COOKIE);
@@ -12,8 +13,7 @@ export async function requireAuth(req, res, next) {
 }
 export function sameOrigin(req, res, next) {
   const origin = req.headers.origin;
-  const allowed = process.env.WEB_ORIGIN || 'http://127.0.0.1:5173';
-  if (origin && origin !== new URL(allowed).origin) throw new HttpError(403, 'Origen no permitido.');
+  if (origin && !isAllowedOrigin(origin)) throw new HttpError(403, 'Origen no permitido.');
   if (req.headers['sec-fetch-site'] === 'cross-site') throw new HttpError(403, 'Origen no permitido.');
   next();
 }

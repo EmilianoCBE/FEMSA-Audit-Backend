@@ -8,7 +8,12 @@ on:
 
 concurrency:
   group: ci-${{ github.ref }}
-  cancel-in-progress: true
+  # En PRs se cancela la corrida anterior; en develop/main nunca se interrumpe un despliegue.
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+env:
+  VERCEL_CLI: vercel@64.3.1
+  STAGING_ALIAS: femsa-audit-api-staging.vercel.app
 
 jobs:
   calidad:
@@ -27,3 +32,57 @@ jobs:
       - name: Pruebas (node --test) con cobertura
         # Las pruebas simulan la BD; el CI nunca se conecta a Azure.
         run: npm run test:coverage
+
+  deploy:
+    name: Deploy de la API a ${{ github.ref_name == 'main' && 'producción' || 'staging' }} (Vercel)
+    runs-on: ubuntu-latest
+    needs: [calidad]
+    # Solo despliega lo que ya entró a develop o main; los PRs únicamente se validan.
+    if: github.event_name == 'push'
+    environment:
+      name: ${{ github.ref_name == 'main' && 'production' || 'staging' }}
+      url: ${{ steps.publicar.outputs.url }}
+    env:
+      VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+      VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+      VERCEL_TELEMETRY_DISABLED: 1
+      PROD: ${{ github.ref_name == 'main' }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - name: Instalar Vercel CLI
+        run: npm install --global "$VERCEL_CLI"
+      - name: Descargar configuración del proyecto
+        run: vercel pull --yes --environment=${{ github.ref_name == 'main' && 'production' || 'preview' }} --token=${{ secrets.VERCEL_TOKEN }}
+      - name: Build
+        run: vercel build ${{ github.ref_name == 'main' && '--prod' || '' }} --token=${{ secrets.VERCEL_TOKEN }}
+      - name: Revisar que no se publique código fuente
+        # Con framework "express" Vercel genera una función y ningún archivo estático.
+        run: test ! -d .vercel/output/static || test -z "$(ls -A .vercel/output/static)"
+      - name: Publicar
+        id: publicar
+        run: |
+          if [ "$PROD" = "true" ]; then
+            url=$(vercel deploy --prebuilt --prod --token=${{ secrets.VERCEL_TOKEN }})
+          else
+            url=$(vercel deploy --prebuilt --token=${{ secrets.VERCEL_TOKEN }})
+            # Alias fijo de staging con la API REST (vercel alias set falla con tokens de equipo).
+            api="https://api.vercel.com"
+            auth="Authorization: Bearer ${{ secrets.VERCEL_TOKEN }}"
+            id=$(curl --fail-with-body -sS -H "$auth" "$api/v13/deployments/${url#https://}?teamId=$VERCEL_ORG_ID" | jq -r .id)
+            curl --fail-with-body -sS -X POST -H "$auth" -H "Content-Type: application/json" \
+              -d "{\"alias\":\"$STAGING_ALIAS\"}" "$api/v2/deployments/$id/aliases?teamId=$VERCEL_ORG_ID"
+            url="https://$STAGING_ALIAS"
+          fi
+          echo "url=$url" >> "$GITHUB_OUTPUT"
+          echo "### API desplegada en $url" >> "$GITHUB_STEP_SUMMARY"
+      - name: Prueba de humo (la API responde y protege sus rutas)
+        run: |
+          url="${{ steps.publicar.outputs.url }}"
+          curl --fail --silent --show-error --retry 6 --retry-delay 5 --retry-all-errors "$url/api/ping" | grep -q pong
+          test "$(curl -s -o /dev/null -w '%{http_code}' "$url/api/auth/me")" = "401"
+          # Informativo: 200 si llega a Azure SQL, 503 si no (firewall o base pausada). No bloquea el despliegue.
+          echo "health: $(curl -s "$url/api/health")" >> "$GITHUB_STEP_SUMMARY"

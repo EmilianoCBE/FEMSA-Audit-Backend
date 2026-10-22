@@ -15,16 +15,20 @@
     "test:coverage": "node --test --experimental-test-coverage tests/*.test.js",
     "auth:migrate": "node scripts/migrate-auth.js",
     "auth:create-user": "node scripts/create-user.js",
-    "versions:migrate": "node scripts/migrate-versions.js"
+    "versions:migrate": "node scripts/migrate-versions.js",
+    "ai:check": "node scripts/ai-check.js",
+    "ai:migrate": "node scripts/migrate-ai.js"
   },
   "dependencies": {
+    "@google/genai": "^2.30.0",
     "cors": "^2.8.6",
     "dotenv": "^17.4.2",
     "express": "^5.2.1",
     "express-rate-limit": "^8.7.0",
     "jose": "^6.2.12",
     "morgan": "^1.12.1",
-    "mssql": "^12.7.2"
+    "mssql": "^12.7.2",
+    "zod": "^4.6.7"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.5.15",
