@@ -82,7 +82,7 @@ jobs:
       - name: Prueba de humo (la API responde y protege sus rutas)
         run: |
           url="${{ steps.publicar.outputs.url }}"
-          curl --fail --silent --show-error --retry 5 --retry-delay 5 "$url/api/ping" | grep -q pong
+          curl --fail --silent --show-error --retry 6 --retry-delay 5 --retry-all-errors "$url/api/ping" | grep -q pong
           test "$(curl -s -o /dev/null -w '%{http_code}' "$url/api/auth/me")" = "401"
           # Informativo: 200 si llega a Azure SQL, 503 si no (firewall o base pausada). No bloquea el despliegue.
           echo "health: $(curl -s "$url/api/health")" >> "$GITHUB_STEP_SUMMARY"
