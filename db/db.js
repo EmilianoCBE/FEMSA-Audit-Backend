@@ -10,8 +10,7 @@ const config = {
 
   options: {
     encrypt: process.env.DB_ENCRYPT !== "false",
-    trustServerCertificate:
-      process.env.DB_TRUST_SERVER_CERTIFICATE === "true",
+    trustServerCertificate: process.env.DB_TRUST_SERVER_CERTIFICATE === "true",
   },
 
   pool: {
@@ -25,25 +24,16 @@ let poolPromise;
 
 export function getPool() {
   if (!poolPromise) {
-    const missing = [
-      "DB_SERVER",
-      "DB_NAME",
-      "DB_USER",
-      "DB_PASSWORD",
-    ].filter((name) => !process.env[name]);
+    const missing = ["DB_SERVER", "DB_NAME", "DB_USER", "DB_PASSWORD"].filter((name) => !process.env[name]);
 
     if (missing.length > 0) {
-      throw new Error(
-        `Faltan variables en .env: ${missing.join(", ")}`
-      );
+      throw new Error(`Faltan variables en .env: ${missing.join(", ")}`);
     }
 
-    poolPromise = new sql.ConnectionPool(config)
-      .connect()
-      .catch((error) => {
-        poolPromise = undefined;
-        throw error;
-      });
+    poolPromise = new sql.ConnectionPool(config).connect().catch((error) => {
+      poolPromise = undefined;
+      throw error;
+    });
   }
 
   return poolPromise;
@@ -52,9 +42,7 @@ export function getPool() {
 export async function connectDB() {
   await getPool();
 
-  console.log(
-    `Conectado a ${config.database} en ${config.server}:${config.port}`
-  );
+  console.log(`Conectado a ${config.database} en ${config.server}:${config.port}`);
 }
 
 export async function closeDB() {
