@@ -2,6 +2,7 @@ import cors from "cors";
 import express from "express";
 import morgan from "morgan";
 import { errorHandler, notFound } from "./middlewares/errorHandler.js";
+import reportsRoutes from "./routes/reports.routes.js";
 import indexRoutes from "./routes/index.routes.js";
 import authRoutes from "./routes/auth.routes.js";
 import usersRoutes from "./routes/users.routes.js";
@@ -43,6 +44,7 @@ app.use("/api/risk-library", riskLibraryRoutes);
 app.use("/api/designer", designerRoutes);
 app.use("/api/apps", versionsRoutes);
 app.use("/api/ai", aiRoutes);
+app.use("/api/reports", reportsRoutes);
 app.use("/api", indexRoutes);
 
 app.use(notFound);
