@@ -1,9 +1,21 @@
-import { getPool, sql } from '../db/db.js';
-import { hashPassword } from '../utils/password.js';
+import { getPool, sql } from "../db/db.js";
+import { hashPassword } from "../utils/password.js";
 
-export async function createAuthUser({ username, email, name, role = 'Auditor', password }) {
-  if (!username || username.includes('@') || username.length > 100 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || email.length > 200 || !name || name.length > 150 || !role || role.length > 200 || password.length < 12 || password.length > 1024) {
-    throw new Error('Datos inválidos. Revisa los campos y la longitud de la contraseña.');
+export async function createAuthUser({ username, email, name, role = "Auditor", password }) {
+  if (
+    !username ||
+    username.includes("@") ||
+    username.length > 100 ||
+    !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) ||
+    email.length > 200 ||
+    !name ||
+    name.length > 150 ||
+    !role ||
+    role.length > 200 ||
+    password.length < 12 ||
+    password.length > 1024
+  ) {
+    throw new Error("Datos inválidos. Revisa los campos y la longitud de la contraseña.");
   }
   const hash = await hashPassword(password);
   const pool = await getPool();
@@ -11,9 +23,11 @@ export async function createAuthUser({ username, email, name, role = 'Auditor', 
   await transaction.begin();
   try {
     const result = await new sql.Request(transaction)
-      .input('username', sql.NVarChar(100), username).input('email', sql.VarChar(200), email)
-      .input('name', sql.NVarChar(150), name).input('role', sql.VarChar(200), role)
-      .input('hash', sql.VarChar(200), hash)
+      .input("username", sql.NVarChar(100), username)
+      .input("email", sql.VarChar(200), email)
+      .input("name", sql.NVarChar(150), name)
+      .input("role", sql.VarChar(200), role)
+      .input("hash", sql.VarChar(200), hash)
       .query(`
         DECLARE @roleId int, @userId int;
         SELECT @roleId = role_id FROM dbo.[ROLE] WHERE name = @role;

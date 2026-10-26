@@ -35,7 +35,7 @@ before(async () => {
 });
 
 after(async () => {
-  if (server) await new Promise(resolve => server.close(resolve));
+  if (server) await new Promise((resolve) => server.close(resolve));
   mock.restoreAll();
 });
 
@@ -56,8 +56,8 @@ test("US11 al arrancar, el lienzo se carga desde la última versión guardada", 
   assert.equal(response.status, 200);
   const { layout } = await response.json();
   assert.deepEqual(
-    layout.elements.map(element => element.id),
-    savedElements.map(element => element.id),
+    layout.elements.map((element) => element.id),
+    savedElements.map((element) => element.id),
   );
   // Solo se carga una vez por ejecución: no vuelve a consultar las versiones.
   assert.equal(versionsRepository.list.mock.callCount(), 1);

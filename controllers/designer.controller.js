@@ -93,4 +93,3 @@ export function putDesignerCanvas(req, res) {
 
   res.json({ layout });
 }
-
