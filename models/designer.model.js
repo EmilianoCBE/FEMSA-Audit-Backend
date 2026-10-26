@@ -7,7 +7,7 @@ const layoutDesignerStore = new Map();
 const hydratedLayoutIds = new Set();
 
 const getCurrentDateIso = () => new Date().toISOString();
-const createDesignerId = prefix => `${prefix}_${Date.now()}_${Math.random().toString(16).slice(2, 8)}`;
+const createDesignerId = (prefix) => `${prefix}_${Date.now()}_${Math.random().toString(16).slice(2, 8)}`;
 
 const defaultDesignerLayout = {
   id: "layout dummy",
@@ -41,7 +41,7 @@ layoutDesignerStore.set(defaultDesignerLayout.id, defaultDesignerLayout);
 function copyDesignerLayout(designerLayout) {
   return {
     ...designerLayout,
-    elements: designerLayout.elements.map(canvasElement => ({
+    elements: designerLayout.elements.map((canvasElement) => ({
       ...canvasElement,
       config: { ...canvasElement.config },
     })),
@@ -93,7 +93,7 @@ export function markDesignerHydrated(layoutId) {
 }
 
 function normalizeDesignerElements(elements) {
-  return elements.map(canvasElement => ({
+  return elements.map((canvasElement) => ({
     id: canvasElement.id || createDesignerId("element"),
     type: canvasElement.type,
     x: canvasElement.x,

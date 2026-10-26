@@ -1,4 +1,3 @@
-
 /**
  * US07 - Clasificación de riesgos
  *
@@ -10,22 +9,22 @@ const RISK_LEVELS = [
   {
     min: 1,
     max: 4,
-    level: 'Bajo',
+    level: "Bajo",
   },
   {
     min: 5,
     max: 9,
-    level: 'Medio',
+    level: "Medio",
   },
   {
     min: 10,
     max: 16,
-    level: 'Alto',
+    level: "Alto",
   },
   {
     min: 17,
     max: 25,
-    level: 'Crítico',
+    level: "Crítico",
   },
 ];
 
@@ -38,9 +37,7 @@ const RISK_LEVELS = [
 export function classifyRisk(probability, impact) {
   const score = probability * impact;
 
-  const classification = RISK_LEVELS.find(
-    (range) => score >= range.min && score <= range.max
-  );
+  const classification = RISK_LEVELS.find((range) => score >= range.min && score <= range.max);
 
   return {
     probability,
@@ -49,4 +46,3 @@ export function classifyRisk(probability, impact) {
     level: classification.level,
   };
 }
-

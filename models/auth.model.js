@@ -1,4 +1,4 @@
-import { getPool, sql } from '../db/db.js';
+import { getPool, sql } from "../db/db.js";
 
 const userColumns = `
   a.Id,
@@ -17,7 +17,7 @@ export async function findUserByIdentifier(identifier) {
 
   const result = await pool
     .request()
-    .input('identifier', sql.NVarChar(254), identifier)
+    .input("identifier", sql.NVarChar(254), identifier)
     .query(`
       SELECT
         ${userColumns}
@@ -26,11 +26,7 @@ export async function findUserByIdentifier(identifier) {
         ON a.UserId = u.user_id
       INNER JOIN dbo.[ROLE] AS r
         ON u.role_id = r.role_id
-      WHERE ${
-        identifier.includes('@')
-          ? 'a.Email'
-          : 'a.Username'
-      } = @identifier
+      WHERE ${identifier.includes("@") ? "a.Email" : "a.Username"} = @identifier
     `);
 
   return result.recordset[0];
@@ -41,7 +37,7 @@ export async function findUserByEntraId(oid) {
 
   const result = await pool
     .request()
-    .input('oid', sql.UniqueIdentifier, oid)
+    .input("oid", sql.UniqueIdentifier, oid)
     .query(`
       SELECT
         ${userColumns}
@@ -63,9 +59,9 @@ export async function insertSession(hash, userId, expiresAt) {
 
   await pool
     .request()
-    .input('hash', sql.Char(64), hash)
-    .input('userId', sql.UniqueIdentifier, userId)
-    .input('expiresAt', sql.DateTime2, expiresAt)
+    .input("hash", sql.Char(64), hash)
+    .input("userId", sql.UniqueIdentifier, userId)
+    .input("expiresAt", sql.DateTime2, expiresAt)
     .query(`
       DELETE FROM dbo.AuthSessions
       WHERE ExpiresAt <= SYSUTCDATETIME();
@@ -90,7 +86,7 @@ export async function findSession(hash) {
 
   const result = await pool
     .request()
-    .input('hash', sql.Char(64), hash)
+    .input("hash", sql.Char(64), hash)
     .query(`
       SELECT
         a.Id,
@@ -118,7 +114,7 @@ export async function deleteSession(hash) {
 
   await pool
     .request()
-    .input('hash', sql.Char(64), hash)
+    .input("hash", sql.Char(64), hash)
     .query(`
       DELETE FROM dbo.AuthSessions
       WHERE TokenHash = @hash
@@ -131,12 +127,11 @@ export function publicUser(user) {
     name: user.Name,
     role: user.Role,
     roleId: user.RoleId,
-    initials: user.Name
-      .trim()
+    initials: user.Name.trim()
       .split(/\s+/)
       .slice(0, 2)
-      .map(word => word[0])
-      .join('')
-      .toUpperCase()
+      .map((word) => word[0])
+      .join("")
+      .toUpperCase(),
   };
 }

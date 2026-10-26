@@ -1,15 +1,15 @@
-
-import { getPool, sql } from '../db/db.js';
+import { getPool, sql } from "../db/db.js";
 
 /**
  * Consulta los riesgos registrados en la biblioteca de FEMSA.
  */
-export async function findRiskLibrary({ search = '', department = '' } = {}) {
+export async function findRiskLibrary({ search = "", department = "" } = {}) {
   const pool = await getPool();
 
-  const request = pool.request()
-    .input('search', sql.NVarChar(600), `%${search.trim()}%`)
-    .input('department', sql.NVarChar(200), department.trim());
+  const request = pool
+    .request()
+    .input("search", sql.NVarChar(600), `%${search.trim()}%`)
+    .input("department", sql.NVarChar(200), department.trim());
 
   const result = await request.query(`
     SELECT
@@ -42,7 +42,7 @@ export async function findRiskLibraryById(riskLibraryId) {
 
   const result = await pool
     .request()
-    .input('riskLibraryId', sql.VarChar(30), riskLibraryId)
+    .input("riskLibraryId", sql.VarChar(30), riskLibraryId)
     .query(`
       SELECT
         risk_library_id,

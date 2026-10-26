@@ -14,4 +14,3 @@ router.post("/layouts", postDesignerLayout);
 router.put("/layouts/:layoutId/canvas", putDesignerCanvas);
 
 export default router;
-

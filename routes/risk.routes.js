@@ -1,17 +1,13 @@
+import { Router } from "express";
 
-import { Router } from 'express';
+import { classifyRiskController } from "../controllers/risk.controller.js";
 
-import { classifyRiskController } from '../controllers/risk.controller.js';
-
-import {
-  requireAuth,
-  sameOrigin,
-} from '../middlewares/auth.js';
+import { requireAuth, sameOrigin } from "../middlewares/auth.js";
 
 const router = Router();
 
 router.use((req, res, next) => {
-  res.set('Cache-Control', 'no-store');
+  res.set("Cache-Control", "no-store");
   next();
 });
 
@@ -20,11 +16,6 @@ router.use((req, res, next) => {
  *
  * Clasifica un riesgo a partir de probabilidad e impacto.
  */
-router.post(
-  '/classify',
-  requireAuth,
-  sameOrigin,
-  classifyRiskController
-);
+router.post("/classify", requireAuth, sameOrigin, classifyRiskController);
 
 export default router;

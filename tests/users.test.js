@@ -8,8 +8,14 @@ import { SESSION_COOKIE, tokenHash } from "../utils/session.js";
 const adminToken = "c".repeat(64);
 const viewerToken = "d".repeat(64);
 const sessions = new Map([
-  [tokenHash(adminToken), { Id: "00000000-0000-4000-8000-000000000002", Name: "Ada Admin", Role: "Administrador", RoleId: 2 }],
-  [tokenHash(viewerToken), { Id: "00000000-0000-4000-8000-000000000003", Name: "Vic Viewer", Role: "Visualizador", RoleId: 3 }],
+  [
+    tokenHash(adminToken),
+    { Id: "00000000-0000-4000-8000-000000000002", Name: "Ada Admin", Role: "Administrador", RoleId: 2 },
+  ],
+  [
+    tokenHash(viewerToken),
+    { Id: "00000000-0000-4000-8000-000000000003", Name: "Vic Viewer", Role: "Visualizador", RoleId: 3 },
+  ],
 ]);
 const as = (token) => ({ Cookie: `${SESSION_COOKIE}=${token}`, "Content-Type": "application/json" });
 const validUser = { firstName: "Daniela", lastName: "Aedo", role_id: 3, password: "contraseña-segura" };
@@ -85,7 +91,8 @@ test("US02.4 un usuario que no es administrador recibe 403 en todo el módulo", 
 });
 
 test("US02.2 valida los ids al cambiar de rol", async () => {
-  const put = (id, body) => fetch(`${base}/${id}/role`, { method: "PUT", headers: as(adminToken), body: JSON.stringify(body) });
+  const put = (id, body) =>
+    fetch(`${base}/${id}/role`, { method: "PUT", headers: as(adminToken), body: JSON.stringify(body) });
   assert.equal((await put("abc", { role_id: 2 })).status, 400);
   assert.equal((await put(0, { role_id: 2 })).status, 400);
   assert.equal((await put(5, { role_id: "admin" })).status, 400);
