@@ -7,7 +7,12 @@ import { SESSION_COOKIE, tokenHash } from "../utils/session.js";
 
 // La BD solo se simula para la sesión; el repositorio de versiones se reemplaza por uno en memoria.
 const token = "a".repeat(64);
-const sessionUser = { Id: "00000000-0000-4000-8000-000000000001", Name: "Rafael Valdez", Role: "Administrador" };
+const sessionUser = {
+  Id: "00000000-0000-4000-8000-000000000001",
+  Name: "Rafael Valdez",
+  Role: "Administrador",
+  RoleId: 2,
+};
 const auth = { Cookie: `${SESSION_COOKIE}=${token}` };
 const jsonHeaders = { ...auth, "Content-Type": "application/json" };
 const appId = "layout dummy";

@@ -13,6 +13,9 @@ import versionsRoutes from "./routes/versions.routes.js";
 import aiRoutes from "./routes/ai.routes.js";
 import { isAllowedOrigin } from "./utils/origins.js";
 
+import permissionsRoutes from "./routes/permissions.routes.js";
+import { requireModule } from "./middlewares/permissions.js";
+
 const app = express();
 
 // En Vercel la API está detrás de su proxy: req.ip debe ser la IP real del usuario (límite de intentos de login).
@@ -37,12 +40,13 @@ app.use(express.json({ limit: "16kb" }));
 
 app.use("/api/auth", authRoutes);
 app.use("/api/users", usersRoutes);
-app.use("/api/risks", riskRoutes);
-app.use("/api/risk-evaluations", riskEvaluationRoutes);
-app.use("/api/risk-library", riskLibraryRoutes);
-app.use("/api/designer", designerRoutes);
-app.use("/api/apps", versionsRoutes);
-app.use("/api/ai", aiRoutes);
+app.use("/api/permissions", permissionsRoutes);
+app.use("/api/risks", requireModule("risks", { readOnly: true }), riskRoutes);
+app.use("/api/risk-evaluations", requireModule("risks"), riskEvaluationRoutes);
+app.use("/api/risk-library", requireModule("risks"), riskLibraryRoutes);
+app.use("/api/designer", requireModule("app-builder"), designerRoutes);
+app.use("/api/apps", requireModule("app-builder"), versionsRoutes);
+app.use("/api/ai", requireModule("app-builder"), aiRoutes);
 app.use("/api", indexRoutes);
 
 app.use(notFound);

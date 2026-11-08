@@ -36,6 +36,8 @@ before(async () => {
           return this;
         },
         async query(query) {
+          if (query.includes("FROM dbo.RoleModulePermissions"))
+            return { recordset: [{ ModuleKey: "risks", Level: "edit" }] };
           if (query.includes("FROM dbo.AuthSessions")) {
             return { recordset: values.hash === tokenHash(token) ? [session] : [] };
           }
