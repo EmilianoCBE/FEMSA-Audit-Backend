@@ -8,7 +8,7 @@ import { badRequest, HttpError, notFoundError } from "../../utils/httpErrors.js"
 import { hydrateDesignerLayout } from "../designer.service.js";
 import { validateAppId } from "../versions.service.js";
 import { getAiProvider } from "./providers/index.js";
-import { runDesignerRules } from "./rules/designer.rules.js";
+import { normalize, runDesignerRules } from "./rules/designer.rules.js";
 import { changeSchema, providerResponseSchema, suggestionSchema } from "./schemas.js";
 
 const DEFAULT_TIMEOUT_MS = 8000;
@@ -55,6 +55,12 @@ export function validateAiSuggestions(raw, fields, ruleSuggestions = []) {
   if (!parsed.success) return [];
 
   const fieldIds = new Set(fields.map((field) => field.id));
+  // Etiquetas que ya existen o que la IA ya propuso: no se agregan dos veces (ni en otra forma: "Riesgo o severidad").
+  const labelKey = (label) =>
+    normalize(label)
+      .replace(/[^a-z0-9]+/g, " ")
+      .trim();
+  const usedLabels = new Set(fields.map((field) => labelKey(field.label)).filter(Boolean));
   const covered = new Set(ruleSuggestions.map((suggestion) => `${suggestion.fieldId}:${suggestion.change?.op}`));
 
   return parsed.data.suggestions.flatMap((candidate) => {
@@ -65,9 +71,24 @@ export function validateAiSuggestions(raw, fields, ruleSuggestions = []) {
     const suggestion = result.data;
     // Un campo o componente sugerido sin cambio concreto no se puede aceptar: se descarta.
     if (suggestion.kind !== "inconsistency" && !suggestion.change) return [];
+    // Una inconsistencia de la IA que no apunta a ningún campo no se puede ubicar (suele repetir las reglas).
+    if (suggestion.kind === "inconsistency" && !suggestion.fieldId) return [];
     const targets = [suggestion.fieldId, suggestion.change?.fieldId].filter(Boolean);
     if (targets.some((id) => !fieldIds.has(id))) return [];
-    if (suggestion.fieldId && covered.has(`${suggestion.fieldId}:${suggestion.change?.op}`)) return [];
+    // Repite una regla: mismo campo y misma operación (el campo puede venir arriba o solo dentro de change).
+    const target = suggestion.fieldId ?? suggestion.change?.fieldId;
+    if (target && covered.has(`${target}:${suggestion.change?.op}`)) return [];
+    if (suggestion.change?.op === "add-field") {
+      const key = labelKey(suggestion.change.label);
+      const words = key
+        .split(" ")
+        .filter((word) => word.length > 3)
+        .sort()
+        .join(" ");
+      if (usedLabels.has(key) || usedLabels.has(words)) return [];
+      usedLabels.add(key);
+      usedLabels.add(words);
+    }
     return [suggestion];
   });
 }
