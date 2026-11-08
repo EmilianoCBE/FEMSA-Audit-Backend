@@ -18,6 +18,17 @@ export function sameOrigin(req, res, next) {
   next();
 }
 
+/** Como requireRole, pero por nombre del rol (sin distinguir mayúsculas), para roles cuyo id cambia entre bases. */
+export function requireRoleName(...allowedRoleNames) {
+  const allowed = new Set(allowedRoleNames.map((name) => name.toLowerCase()));
+  return (req, res, next) => {
+    if (!req.user || !allowed.has(String(req.user.role ?? "").toLowerCase())) {
+      throw new HttpError(403, "No tienes permisos para realizar esta operación.");
+    }
+    next();
+  };
+}
+
 export function requireRole(...allowedRoleIds) {
   return (req, res, next) => {
     if (!req.user || !allowedRoleIds.includes(Number(req.user.roleId))) {
