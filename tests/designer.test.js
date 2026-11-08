@@ -13,9 +13,8 @@ const savedElements = [
 ];
 
 before(async () => {
-  mock.method(versionsRepository, "list", async (appId) => (appId === "layout dummy" ? [{ id: 9, number: 6 }] : []));
-  mock.method(versionsRepository, "findById", async (appId, id) =>
-    appId === "layout dummy" && id === 9 ? { id, config: { elements: savedElements } } : null,
+  mock.method(versionsRepository, "findLatest", async (appId) =>
+    appId === "layout dummy" ? { id: 9, number: 6, config: { elements: savedElements } } : null,
   );
   Object.assign(process.env, {
     DB_SERVER: "test",
@@ -60,7 +59,7 @@ test("US11 al arrancar, el lienzo se carga desde la última versión guardada", 
     savedElements.map((element) => element.id),
   );
   // Solo se carga una vez por ejecución: no vuelve a consultar las versiones.
-  assert.equal(versionsRepository.list.mock.callCount(), 1);
+  assert.equal(versionsRepository.findLatest.mock.callCount(), 1);
 });
 
 test("US03 crea layout y guarda elementos arrastrados al canvas", async () => {

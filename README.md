@@ -88,11 +88,12 @@ tests/            → pruebas con node --test
 | GET | `/api/designer/layouts/:layoutId` | US03 Magda: obtiene un layout con sus elementos del canvas |
 | POST | `/api/designer/layouts` | US03 Magda: crea un layout/módulo visual configurable |
 | PUT | `/api/designer/layouts/:layoutId/canvas` | US03 Magda: guarda posiciones y configuración después del drag & drop |
-| GET | `/api/apps/:appId/versions` | US11 Rafael: historial de versiones de la aplicación (sin la configuración) |
+| GET | `/api/apps/:appId/versions` | US11 Rafael: `{ versions, designer, canEdit }`: historial sin la configuración ni los borradores descartados; `designer` dice qué versión coincide con el lienzo y si tiene cambios sin versión |
 | GET | `/api/apps/:appId/versions/:versionId` | US11 Rafael: detalle de una versión con su `config` completa |
-| POST | `/api/apps/:appId/versions` | US11 Rafael: guarda `{ config, changes[] }` como nuevo borrador (`v1`, `v2`, …) |
-| POST | `/api/apps/:appId/versions/:versionId/publish` | US11 Rafael: publica un borrador; la vigente anterior pasa a archivada |
-| POST | `/api/apps/:appId/versions/:versionId/restore` | US11 Rafael: crea un borrador nuevo con la configuración de esa versión |
+| POST | `/api/apps/:appId/versions` | US11 Rafael: guarda `{ config, changes[] }` como nuevo borrador (`v1`, `v2`, …); 409 si es idéntica a la más reciente |
+| POST | `/api/apps/:appId/versions/:versionId/publish` | US11 Rafael: publica un borrador y guarda quién lo publicó; la vigente anterior pasa a archivada |
+| POST | `/api/apps/:appId/versions/:versionId/discard` | US11 Rafael: descarta un borrador (sale del historial; su número no se reutiliza) |
+| POST | `/api/apps/:appId/versions/:versionId/restore` | US11 Rafael: `{ version, backup }`: respalda el lienzo si tiene cambios sin versión, crea un borrador con la configuración de esa versión y la aplica al Designer |
 | POST | `/api/ai/designer/analyze` | US15–US17 Emiliano: recibe `{ appId }` y devuelve sugerencias explicadas (reglas + IA) para un formulario del Designer; no cambia nada |
 | POST | `/api/ai/recommendations/:id/decision` | US17 Emiliano: registra `{ decision: "accepted" \| "rejected" \| "replaced", change? }`; una sola vez por sugerencia (409) |
 | GET | `/api/ai/designer/metrics?appId=` | US17 Emiliano: aceptación por origen (reglas / IA) y latencia promedio de la IA |
@@ -103,8 +104,9 @@ Las rutas `/api/users/*`, `/api/risks/*`, `/api/risk-library/*` y `/api/risk-eva
 usuarios además el rol Administrador (`role_id` 2). Las tablas `RISK_LIBRARY` y `RISK_EVALUATION` ya existen en la BD
 compartida, pero todavía no tienen migración en `db/migrations/` (pendiente).
 
-Las rutas `/api/apps/*` requieren sesión. Antes de usarlas crea la tabla con `npm run versions:migrate`
-(requiere haber corrido `npm run auth:migrate`). `appId` es el id de la plantilla del Designer.
+Las rutas `/api/apps/*` requieren sesión; guardar, publicar, descartar y restaurar además requieren el rol
+Administrador o Creador de aplicaciones. Antes de usarlas crea o actualiza la tabla con `npm run versions:migrate`
+(corre `002` y `004`; requiere haber corrido `npm run auth:migrate`). `appId` es el id de la plantilla del Designer.
 
 El asistente de IA (`/api/ai/*`, requiere sesión) usa `AI_PROVIDER=mock` por defecto: responde sin llamar a ningún
 servicio externo. Las reglas de inconsistencias siempre responden; si el proveedor falla o tarda más de `AI_TIMEOUT_MS`,
