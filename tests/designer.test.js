@@ -1,9 +1,17 @@
 import assert from "node:assert/strict";
 import { after, before, mock, test } from "node:test";
+import sql from "mssql";
 import { versionsRepository } from "../repositories/versions.repository.js";
+import { SESSION_COOKIE, tokenHash } from "../utils/session.js";
 
 let server;
 let base;
+let originalConnect;
+
+// /api/designer pide sesión y permiso del módulo app-builder (US13): se simula la sesión de un administrador.
+const token = "d".repeat(64);
+const sessionUser = { Id: "00000000-0000-4000-8000-000000000003", Name: "Admin", Role: "Administrador", RoleId: 2 };
+const auth = { Cookie: `${SESSION_COOKIE}=${token}` };
 
 // Última versión guardada de "layout dummy": el lienzo debe cargarse desde aquí y no desde la plantilla por defecto.
 const savedElements = [
@@ -23,6 +31,25 @@ before(async () => {
     DB_PASSWORD: "test",
     WEB_ORIGIN: "http://127.0.0.1:5173",
   });
+  originalConnect = sql.ConnectionPool.prototype.connect;
+  sql.ConnectionPool.prototype.connect = async () => ({
+    close: async () => {},
+    request() {
+      const values = {};
+      return {
+        input(name, type, value) {
+          values[name] = value;
+          return this;
+        },
+        async query(query) {
+          if (query.includes("FROM dbo.AuthSessions")) {
+            return { recordset: values.hash === tokenHash(token) ? [sessionUser] : [] };
+          }
+          throw new Error("Unexpected SQL");
+        },
+      };
+    },
+  });
 
   const { default: app } = await import("../app.js");
   server = app.listen(0, "127.0.0.1");
@@ -36,12 +63,15 @@ before(async () => {
 after(async () => {
   if (server) await new Promise((resolve) => server.close(resolve));
   mock.restoreAll();
+  sql.ConnectionPool.prototype.connect = originalConnect;
+  const { closeDB } = await import("../db/db.js");
+  await closeDB();
 });
 
-const jsonHeaders = { "Content-Type": "application/json" };
+const jsonHeaders = { ...auth, "Content-Type": "application/json" };
 
 test("US03 lista layouts disponibles para el Designer", async () => {
-  const response = await fetch(`${base}/layouts`);
+  const response = await fetch(`${base}/layouts`, { headers: auth });
 
   assert.equal(response.status, 200);
   const body = await response.json();
@@ -50,7 +80,7 @@ test("US03 lista layouts disponibles para el Designer", async () => {
 });
 
 test("US11 al arrancar, el lienzo se carga desde la última versión guardada", async () => {
-  const response = await fetch(`${base}/layouts/${encodeURIComponent("layout dummy")}`);
+  const response = await fetch(`${base}/layouts/${encodeURIComponent("layout dummy")}`, { headers: auth });
 
   assert.equal(response.status, 200);
   const { layout } = await response.json();
@@ -132,4 +162,9 @@ test("US03 valida payloads inválidos", async () => {
   assert.equal(response.status, 400);
   const body = await response.json();
   assert.match(body.message, /coordenadas/);
+});
+
+test("US13 el Designer pide iniciar sesión", async () => {
+  const response = await fetch(`${base}/layouts`);
+  assert.equal(response.status, 401);
 });

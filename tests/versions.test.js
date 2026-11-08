@@ -14,8 +14,14 @@ const sessions = {
     Id: "00000000-0000-4000-8000-000000000001",
     Name: "Rafael Valdez",
     Role: "Administrador",
+    RoleId: 2,
   },
-  [tokenHash(viewerToken)]: { Id: "00000000-0000-4000-8000-000000000003", Name: "Vera Vista", Role: "Visualizador" },
+  [tokenHash(viewerToken)]: {
+    Id: "00000000-0000-4000-8000-000000000003",
+    Name: "Vera Vista",
+    Role: "Visualizador",
+    RoleId: 4,
+  },
 };
 const auth = { Cookie: `${SESSION_COOKIE}=${editorToken}` };
 const viewerAuth = { Cookie: `${SESSION_COOKIE}=${viewerToken}` };
@@ -99,6 +105,10 @@ before(async () => {
           if (query.includes("FROM dbo.AuthSessions")) {
             const user = sessions[values.hash];
             return { recordset: user ? [user] : [] };
+          }
+          // Permisos por módulo (US13): el Visualizador solo consulta el App Builder.
+          if (query.includes("FROM dbo.RoleModulePermissions")) {
+            return { recordset: [{ ModuleKey: "app-builder", Level: values.roleId === 4 ? "read" : "edit" }] };
           }
           throw new Error("Unexpected SQL");
         },
