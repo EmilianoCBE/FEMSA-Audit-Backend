@@ -1,7 +1,7 @@
 import { readFile } from "node:fs/promises";
 import { closeDB, getPool } from "../db/db.js";
 try {
-  const migration = await readFile(new URL("../db/migrations/004-role-permissions.sql", import.meta.url), "utf8");
+  const migration = await readFile(new URL("../db/migrations/005-role-permissions.sql", import.meta.url), "utf8");
   await (await getPool()).request().batch(migration);
   console.log("Permisos predeterminados por rol configurados.");
 } catch (error) {

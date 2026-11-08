@@ -8,7 +8,7 @@ Antes de desplegar esta API y el frontend, ejecutar en el backend con las variab
 npm run permissions:migrate
 ```
 
-La migración `004-role-permissions.sql` crea `dbo.RoleModulePermissions` y agrega los valores iniciales de los roles existentes. Es transaccional y reejecutable: no sobrescribe decisiones posteriores. No se ejecuta automáticamente al iniciar el servidor. Debe aplicarse antes de habilitar la nueva interfaz. Las pruebas usan una base simulada; no ejecutan SQL contra Azure.
+La migración `005-role-permissions.sql` crea `dbo.RoleModulePermissions` y agrega los valores iniciales de los roles existentes. Es transaccional y reejecutable: no sobrescribe decisiones posteriores. No se ejecuta automáticamente al iniciar el servidor. Debe aplicarse antes de habilitar la nueva interfaz. Las pruebas usan una base simulada; no ejecutan SQL contra Azure.
 
 ## Configuración inicial propuesta
 
