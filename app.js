@@ -9,6 +9,7 @@ import riskRoutes from "./routes/risk.routes.js";
 import riskEvaluationRoutes from "./routes/riskEvaluation.routes.js";
 import designerRoutes from "./routes/designer.routes.js";
 import riskLibraryRoutes from "./routes/riskLibrary.routes.js";
+import controlEvaluationRoutes from "./routes/controlEvaluation.routes.js";
 
 const app = express();
 
@@ -32,6 +33,7 @@ app.use("/api/auth", authRoutes);
 app.use("/api/users", usersRoutes);
 app.use("/api/risks", riskRoutes);
 app.use("/api/risk-evaluations", riskEvaluationRoutes);
+app.use("/api/control-evaluations", controlEvaluationRoutes);
 app.use('/api/designer', designerRoutes);
 app.use("/api", indexRoutes);
 app.use("/api/risk-library", riskLibraryRoutes);
