@@ -22,7 +22,7 @@ Reglas:
   - add-field (type, label, section): agregar un campo nuevo.
 - Si "kind" es "field" o "component", incluye siempre "change"; sin "change" la sugerencia no se puede aplicar.
 - "fieldId" debe ser exactamente uno de los ids que recibes. Nunca inventes ids. En add-field no envíes "fieldId".
-- Tipos permitidos: ${FIELD_TYPES.join(", ")}. Secciones: ${SECTIONS.join(", ")}.
+- Tipos permitidos: ${FIELD_TYPES.join(", ")} ("section" es un campo de archivos adjuntos). Secciones: ${SECTIONS.join(", ")}.
 - "known" son revisiones automáticas que el usuario ya está viendo. No propongas nada sobre los campos que aparecen
   ahí (ni el mismo cambio ni otro distinto); concéntrate en lo que falta.
 - Un hallazgo de auditoría completo necesita: fecha de detección, área o unidad auditada, criterio incumplido, causa,
