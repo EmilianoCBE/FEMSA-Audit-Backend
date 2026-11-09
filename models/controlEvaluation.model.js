@@ -134,14 +134,25 @@ export async function findRisksWithControls() {
       catalog_info.divisions,
       catalog_info.subdivisions,
       catalog_info.areas,
-      catalog_info.countries
+      catalog_info.countries,
+      latest.vulnerability AS latest_vulnerability
 
-        FROM dbo.RISK AS r
+    FROM dbo.RISK AS r
 
     LEFT JOIN dbo.CONTROL AS c
       ON c.risk_id = r.risk_id
 
     ${catalogInfoApply}
+
+    OUTER APPLY (
+      SELECT TOP (1)
+        ce.vulnerability
+      FROM dbo.CONTROL_EVALUATION AS ce
+      WHERE ce.control_id = c.control_id
+      ORDER BY
+        ce.evaluated_at DESC,
+        ce.evaluation_id DESC
+    ) AS latest
 
     WHERE r.tracking_id NOT IN (
       'RSK-000101',

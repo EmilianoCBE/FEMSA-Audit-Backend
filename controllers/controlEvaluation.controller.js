@@ -75,23 +75,42 @@ export async function getRisksWithControlsController(req, res) {
         category: record.category,
         inherentLevel: record.inherent_level,
         controls: [],
+        vulnerabilities: [],
       });
     }
 
+    const risk = risksMap.get(record.risk_id);
+
     if (record.control_id !== null) {
-      risksMap.get(record.risk_id).controls.push({
+      risk.controls.push({
         controlId: record.control_id,
         trackingId: record.control_tracking_id,
         name: record.control_name,
         domain: record.domain,
         ...mapCatalogInfo(record),
       });
+
+      if (record.latest_vulnerability) {
+        risk.vulnerabilities.push(record.latest_vulnerability);
+      }
     }
   }
 
-  res.json({
-    risks: Array.from(risksMap.values()),
+  const risks = Array.from(risksMap.values()).map((risk) => {
+    const residualRisk = calculateResidualRisk(risk.vulnerabilities);
+
+    const {
+      vulnerabilities,
+      ...riskData
+    } = risk;
+
+    return {
+      ...riskData,
+      residualRisk,
+    };
   });
+
+  res.json({ risks });
 }
 
 /**
