@@ -6,6 +6,7 @@ import {
   calculatedWithoutFormulaRule,
   componentHintRule,
   duplicateLabelRule,
+  emptySectionRule,
   genericLabelRule,
   runDesignerRules,
 } from "../services/ai/rules/designer.rules.js";
@@ -27,10 +28,12 @@ test("US16 detecta etiquetas vacías o que siguen con el nombre del componente",
     field("c", "short-text", "  "),
     field("d", "short-text", "Título del hallazgo"),
     field("e", "section", "Adjunto"),
+    field("f", "section", "Evidencia fotográfica"),
   ]);
+  // "section" es el campo Adjunto del Designer: con la etiqueta por defecto también se señala.
   assert.deepEqual(
     result.map((s) => s.fieldId),
-    ["a", "b", "c"],
+    ["a", "b", "c", "e"],
   );
   assert.ok(result.every((s) => s.kind === "inconsistency" && s.reason.length > 20));
 });
@@ -44,6 +47,39 @@ test("US16 detecta etiquetas duplicadas sin importar mayúsculas ni acentos", ()
   assert.equal(result.length, 1);
   assert.equal(result[0].fieldId, "b");
   assert.match(result[0].reason, /\ba\b/);
+});
+
+test("US16 detecta secciones del hallazgo sin campos", () => {
+  const result = emptySectionRule([
+    field("a", "short-text", "Título", { section: "identificacion" }),
+    field("b", "date", "Fecha compromiso", { section: "remediacion" }),
+  ]);
+  assert.equal(result.length, 1);
+  assert.match(result[0].title, /Evaluación/);
+  assert.equal(result[0].kind, "inconsistency");
+  assert.equal(result[0].fieldId, undefined);
+  assert.ok(result[0].reason.length > 20);
+  assert.deepEqual(emptySectionRule([]), [], "un formulario vacío no se reporta por sección");
+  assert.deepEqual(
+    emptySectionRule(
+      ["identificacion", "evaluacion", "remediacion"].map((section, i) => field(`f${i}`, "number", "x", { section })),
+    ),
+    [],
+  );
+});
+
+test("US16 sin sección guardada, el campo toma la misma sección que le asigna el Designer", () => {
+  const elements = Array.from({ length: 7 }, (_, i) => ({
+    id: `e${i}`,
+    type: "short-text",
+    config: { label: `C${i}` },
+  }));
+  elements[6].config.section = "identificacion";
+  elements[5].config.section = "otra";
+  assert.deepEqual(
+    toDesignerFields(elements).map((f) => f.section),
+    ["identificacion", "identificacion", "identificacion", "evaluacion", "evaluacion", "evaluacion", "identificacion"],
+  );
 });
 
 test("US16 detecta campos calculados sin fórmula", () => {
