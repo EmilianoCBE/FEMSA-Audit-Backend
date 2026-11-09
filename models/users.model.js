@@ -1,7 +1,6 @@
-
-import { getPool, sql } from '../db/db.js';
-import { HttpError } from '../utils/httpErrors.js';
-import { hashPassword } from '../utils/password.js';
+import { getPool, sql } from "../db/db.js";
+import { HttpError } from "../utils/httpErrors.js";
+import { hashPassword } from "../utils/password.js";
 
 /**
  * Obtiene todos los usuarios junto con su rol.
@@ -60,13 +59,9 @@ export async function updateUserRole(userId, roleId) {
       WHERE role_id = 2 AND is_active = 1;
     `);
 
-    const activeAdmins = Number(
-      adminResult.recordset[0].activeAdmins
-    );
+    const activeAdmins = Number(adminResult.recordset[0].activeAdmins);
 
-    const roleResult = await new sql.Request(transaction)
-      .input('roleId', sql.Int, roleId)
-      .query(`
+    const roleResult = await new sql.Request(transaction).input("roleId", sql.Int, roleId).query(`
         SELECT role_id
         FROM dbo.[ROLE]
         WHERE role_id = @roleId;
@@ -77,9 +72,7 @@ export async function updateUserRole(userId, roleId) {
       return null;
     }
 
-    const userResult = await new sql.Request(transaction)
-      .input('userId', sql.Int, userId)
-      .query(`
+    const userResult = await new sql.Request(transaction).input("userId", sql.Int, userId).query(`
         SELECT user_id, role_id, is_active
         FROM dbo.[USER]
         WHERE user_id = @userId;
@@ -92,25 +85,15 @@ export async function updateUserRole(userId, roleId) {
 
     const currentUser = userResult.recordset[0];
 
-    const isActive =
-      currentUser.is_active === true ||
-      currentUser.is_active === 1;
+    const isActive = currentUser.is_active === true || currentUser.is_active === 1;
 
-    if (
-      isActive &&
-      Number(currentUser.role_id) === 2 &&
-      Number(roleId) !== 2 &&
-      activeAdmins <= 1
-    ) {
-      throw new HttpError(
-        409,
-        'No puedes quitar el rol al último administrador activo.'
-      );
+    if (isActive && Number(currentUser.role_id) === 2 && Number(roleId) !== 2 && activeAdmins <= 1) {
+      throw new HttpError(409, "No puedes quitar el rol al último administrador activo.");
     }
 
     const updateResult = await new sql.Request(transaction)
-      .input('userId', sql.Int, userId)
-      .input('roleId', sql.Int, roleId)
+      .input("userId", sql.Int, userId)
+      .input("roleId", sql.Int, roleId)
       .query(`
         UPDATE dbo.[USER]
         SET role_id = @roleId
@@ -141,13 +124,7 @@ export async function updateUserRole(userId, roleId) {
  * Si el correo ya existe, intenta con un número al final.
  * La contraseña se guarda únicamente como hash.
  */
-export async function createUser({
-  firstName,
-  lastName,
-  email,
-  roleId,
-  password
-}) {
+export async function createUser({ firstName, lastName, email, roleId, password }) {
   const pool = await getPool();
   const passwordHash = await hashPassword(password);
   const fullName = `${firstName} ${lastName}`.trim();
@@ -158,29 +135,21 @@ export async function createUser({
 
   try {
     // Verificar que el rol exista.
-    const roleResult = await new sql.Request(transaction)
-      .input('roleId', sql.Int, roleId)
-      .query(`
+    const roleResult = await new sql.Request(transaction).input("roleId", sql.Int, roleId).query(`
         SELECT role_id
         FROM dbo.[ROLE] WITH (UPDLOCK, HOLDLOCK)
         WHERE role_id = @roleId;
       `);
 
     if (!roleResult.recordset.length) {
-      throw new HttpError(
-        400,
-        'El rol seleccionado no existe.'
-      );
+      throw new HttpError(400, "El rol seleccionado no existe.");
     }
 
     // Encontrar un correo que no esté registrado en ninguna tabla.
-    const atIndex = email.lastIndexOf('@');
+    const atIndex = email.lastIndexOf("@");
 
     if (atIndex <= 0 || email.length > 200) {
-      throw new HttpError(
-        400,
-        'El correo generado no tiene un formato válido o es demasiado largo.'
-      );
+      throw new HttpError(400, "El correo generado no tiene un formato válido o es demasiado largo.");
     }
 
     const namePart = email.substring(0, atIndex);
@@ -191,15 +160,10 @@ export async function createUser({
 
     while (true) {
       if (finalEmail.length > 200) {
-        throw new HttpError(
-          400,
-          'No se pudo generar un correo que cumpla con la longitud permitida.'
-        );
+        throw new HttpError(400, "No se pudo generar un correo que cumpla con la longitud permitida.");
       }
 
-      const duplicateResult = await new sql.Request(transaction)
-        .input('email', sql.VarChar(200), finalEmail)
-        .query(`
+      const duplicateResult = await new sql.Request(transaction).input("email", sql.VarChar(200), finalEmail).query(`
           SELECT
             CASE
               WHEN EXISTS (
@@ -229,9 +193,9 @@ export async function createUser({
     // entra_id requiere un UUID en el esquema actual.
     // Este UUID es provisional; no es una identidad real de Microsoft.
     const userResult = await new sql.Request(transaction)
-      .input('email', sql.VarChar(200), finalEmail)
-      .input('fullName', sql.VarChar(200), fullName)
-      .input('roleId', sql.Int, roleId)
+      .input("email", sql.VarChar(200), finalEmail)
+      .input("fullName", sql.VarChar(200), fullName)
+      .input("roleId", sql.Int, roleId)
       .query(`
         INSERT INTO dbo.[USER]
           (entra_id, email, full_name, is_active, role_id)
@@ -250,11 +214,11 @@ export async function createUser({
 
     // Registrar las credenciales locales vinculadas al usuario.
     await new sql.Request(transaction)
-      .input('username', sql.NVarChar(200), finalEmail)
-      .input('email', sql.NVarChar(508), finalEmail)
-      .input('name', sql.NVarChar(300), fullName)
-      .input('passwordHash', sql.VarChar(200), passwordHash)
-      .input('userId', sql.Int, user.user_id)
+      .input("username", sql.NVarChar(200), finalEmail)
+      .input("email", sql.NVarChar(508), finalEmail)
+      .input("name", sql.NVarChar(300), fullName)
+      .input("passwordHash", sql.VarChar(200), passwordHash)
+      .input("userId", sql.Int, user.user_id)
       .query(`
         INSERT INTO dbo.AuthUsers
           (Username, Email, Name, PasswordHash, UserId, IsActive)
@@ -273,14 +237,9 @@ export async function createUser({
     }
 
     if (error.number === 2601 || error.number === 2627) {
-      throw new HttpError(
-        409,
-        'El correo entró en conflicto con otro registro. Intenta crear el usuario nuevamente.'
-      );
+      throw new HttpError(409, "El correo entró en conflicto con otro registro. Intenta crear el usuario nuevamente.");
     }
 
     throw error;
   }
 }
-
-

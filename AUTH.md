@@ -5,7 +5,7 @@ La página `/login` prioriza Entra ID y ofrece usuario/email y contraseña como 
 ## Preparar acceso local
 
 1. Configura `DB_SERVER`, `DB_NAME`, `DB_USER`, `DB_PASSWORD` en `.env`.
-2. Agrega las variables de `.env.auth.example` a ese mismo archivo. Para acceso local basta con `WEB_ORIGIN` y `NODE_ENV`.
+2. Agrega las variables de `.env.auth.example` a ese mismo archivo. Para acceso local con usuario y contraseña no hacen falta (`WEB_ORIGIN` y `NODE_ENV` ya vienen en `.env.example`).
 3. Ejecuta `npm run auth:migrate`. Requiere las tablas de negocio `dbo.USER` y `dbo.ROLE`. Crea `dbo.AuthUsers` y `dbo.AuthSessions` sin modificar tablas existentes; puede ejecutarse nuevamente.
 4. Ejecuta `npm run auth:create-user` en una terminal. Solicita usuario, email, nombre, rol y contraseña oculta (mínimo 12 caracteres).
 5. Ejecuta `npm run dev` aquí y también en el repo del frontend ([FEMSA-Audit](https://github.com/EmilianoCBE/FEMSA-Audit)); abre `http://127.0.0.1:5173/login`. Usa este mismo host en `WEB_ORIGIN`.
@@ -45,7 +45,7 @@ Para acceso exclusivo con Entra, crea una fila con Username, Email, Name y Entra
 | GET | `/api/auth/me` | Devuelve usuario autenticado o 401 |
 | POST | `/api/auth/logout` | Revoca sesión y elimina cookie |
 
-Las rutas del frontend requieren sesión. Para nuevas rutas de datos de la API, usa `requireAuth` de `middlewares/auth.js`; ping y health siguen públicos. Los permisos por rol de las funcionalidades existentes no están implementados por este login.
+Las rutas del frontend requieren sesión. Para nuevas rutas de datos de la API, usa `requireAuth` de `middlewares/auth.js`; ping y health siguen públicos. Los permisos predeterminados por rol se configuran con la migración y los endpoints descritos en [PERMISSIONS.md](PERMISSIONS.md). Las rutas de App Builder y Riesgos requieren además autorización del módulo.
 
 En producción configura `NODE_ENV=production`, HTTPS, `WEB_ORIGIN` y el redirect real; publica la web y `/api` bajo el mismo sitio. El limitador de intentos usa memoria por proceso (20 intentos cada 15 minutos por IP); para múltiples instancias se necesita un almacén compartido. Configura `trust proxy` según tu infraestructura antes de usar un proxy inverso.
 

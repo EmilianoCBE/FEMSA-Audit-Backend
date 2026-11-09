@@ -1,4 +1,3 @@
-
 import {
   findRisksWithControls,
   findRiskWithControls,
@@ -15,29 +14,11 @@ import {
 
 import { HttpError } from "../utils/httpErrors.js";
 
-const PROBABILITIES = [
-  "Inminente",
-  "Altamente probable",
-  "Probable",
-  "No probable",
-  "Remota",
-];
+const PROBABILITIES = ["Inminente", "Altamente probable", "Probable", "No probable", "Remota"];
 
-const IMPACTS = [
-  "Menor",
-  "Bajo",
-  "Moderado",
-  "Alto",
-  "Crítico",
-];
+const IMPACTS = ["Menor", "Bajo", "Moderado", "Alto", "Crítico"];
 
-const CONTROL_RATINGS = [
-  "Inicial",
-  "Funcional",
-  "Definido",
-  "Gestionado",
-  "Optimizado",
-];
+const CONTROL_RATINGS = ["Inicial", "Funcional", "Definido", "Gestionado", "Optimizado"];
 
 /**
  * Convierte los campos organizacionales del modelo
@@ -99,10 +80,7 @@ export async function getRisksWithControlsController(req, res) {
   const risks = Array.from(risksMap.values()).map((risk) => {
     const residualRisk = calculateResidualRisk(risk.vulnerabilities);
 
-    const {
-      vulnerabilities,
-      ...riskData
-    } = risk;
+    const { vulnerabilities, ...riskData } = risk;
 
     return {
       ...riskData,
@@ -125,26 +103,20 @@ export async function getRiskWithControlsController(req, res) {
   const riskId = req.params.riskId?.trim();
 
   if (!riskId || riskId.length > 30) {
-    throw new HttpError(
-      400,
-      "El identificador del riesgo no es válido."
-    );
+    throw new HttpError(400, "El identificador del riesgo no es válido.");
   }
 
   const records = await findRiskWithControls(riskId);
 
   if (records.length === 0) {
-    throw new HttpError(
-      404,
-      "El riesgo seleccionado no existe."
-    );
+    throw new HttpError(404, "El riesgo seleccionado no existe.");
   }
 
   const firstRecord = records[0];
 
   const controls = records
-    .filter(record => record.control_id !== null)
-    .map(record => ({
+    .filter((record) => record.control_id !== null)
+    .map((record) => ({
       controlId: record.control_id,
       trackingId: record.control_tracking_id,
       name: record.control_name,
@@ -170,9 +142,7 @@ export async function getRiskWithControlsController(req, res) {
 
   // Solo se considera la última evaluación de cada control.
   // Los controles que nunca se han evaluado quedan excluidos.
-  const vulnerabilities = controls
-    .map(control => control.latestEvaluation?.vulnerability)
-    .filter(Boolean);
+  const vulnerabilities = controls.map((control) => control.latestEvaluation?.vulnerability).filter(Boolean);
 
   const residualRisk = calculateResidualRisk(vulnerabilities);
 
@@ -202,27 +172,21 @@ export async function getControlEvaluationHistoryController(req, res) {
     !/^[1-9]\d*$/.test(rawControlId) ||
     !Number.isSafeInteger(Number(rawControlId))
   ) {
-    throw new HttpError(
-      400,
-      "El identificador del control debe ser un entero positivo."
-    );
+    throw new HttpError(400, "El identificador del control debe ser un entero positivo.");
   }
 
   const controlId = Number(rawControlId);
   const records = await findControlEvaluationHistory(controlId);
 
   if (records.length === 0) {
-    throw new HttpError(
-      404,
-      "El control seleccionado no existe."
-    );
+    throw new HttpError(404, "El control seleccionado no existe.");
   }
 
   const firstRecord = records[0];
 
   const evaluations = records
-    .filter(record => record.evaluation_id !== null)
-    .map(record => ({
+    .filter((record) => record.evaluation_id !== null)
+    .map((record) => ({
       evaluationId: record.evaluation_id,
       probability: record.probability,
       impact: record.impact,
@@ -262,74 +226,38 @@ export async function getControlEvaluationHistoryController(req, res) {
  * No confía en resultados calculados por el frontend.
  */
 export async function createControlEvaluationController(req, res) {
-  const {
-    controlId,
-    probability,
-    impact,
-    designRating,
-    effectivenessRating,
-    comments,
-  } = req.body ?? {};
+  const { controlId, probability, impact, designRating, effectivenessRating, comments } = req.body ?? {};
 
   // Validar el identificador del control.
-  if (
-    !Number.isSafeInteger(Number(controlId)) ||
-    Number(controlId) <= 0 ||
-    String(controlId).trim() === ""
-  ) {
-    throw new HttpError(
-      400,
-      "Debes seleccionar un control válido."
-    );
+  if (!Number.isSafeInteger(Number(controlId)) || Number(controlId) <= 0 || String(controlId).trim() === "") {
+    throw new HttpError(400, "Debes seleccionar un control válido.");
   }
 
   const numericControlId = Number(controlId);
 
   // Validar probabilidad.
   if (!PROBABILITIES.includes(probability)) {
-    throw new HttpError(
-      400,
-      "La probabilidad seleccionada no es válida."
-    );
+    throw new HttpError(400, "La probabilidad seleccionada no es válida.");
   }
 
   // Validar impacto.
   if (!IMPACTS.includes(impact)) {
-    throw new HttpError(
-      400,
-      "El impacto seleccionado no es válido."
-    );
+    throw new HttpError(400, "El impacto seleccionado no es válido.");
   }
 
   // Validar diseño del control.
   if (!CONTROL_RATINGS.includes(designRating)) {
-    throw new HttpError(
-      400,
-      "La calificación del diseño no es válida."
-    );
+    throw new HttpError(400, "La calificación del diseño no es válida.");
   }
 
   // Validar efectividad del control.
   if (!CONTROL_RATINGS.includes(effectivenessRating)) {
-    throw new HttpError(
-      400,
-      "La calificación de efectividad no es válida."
-    );
+    throw new HttpError(400, "La calificación de efectividad no es válida.");
   }
 
   // Validar comentarios opcionales.
-  if (
-    comments !== undefined &&
-    comments !== null &&
-    (
-      typeof comments !== "string" ||
-      comments.length > 2000
-    )
-  ) {
-    throw new HttpError(
-      400,
-      "Los comentarios deben ser texto y no superar 2000 caracteres."
-    );
+  if (comments !== undefined && comments !== null && (typeof comments !== "string" || comments.length > 2000)) {
+    throw new HttpError(400, "Los comentarios deben ser texto y no superar 2000 caracteres.");
   }
 
   // Identificar al usuario autenticado mediante su UUID de sesión.
@@ -339,27 +267,15 @@ export async function createControlEvaluationController(req, res) {
     typeof authUserId !== "string" ||
     !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(authUserId)
   ) {
-    throw new HttpError(
-      401,
-      "No se pudo identificar al usuario autenticado."
-    );
+    throw new HttpError(401, "No se pudo identificar al usuario autenticado.");
   }
 
   // Calcular los resultados con las matrices oficiales de FEMSA.
-  const inherentLevel = calculateInherentRisk(
-    probability,
-    impact
-  );
+  const inherentLevel = calculateInherentRisk(probability, impact);
 
-  const controlLevel = calculateControlLevel(
-    designRating,
-    effectivenessRating
-  );
+  const controlLevel = calculateControlLevel(designRating, effectivenessRating);
 
-  const vulnerability = calculateVulnerability(
-    inherentLevel,
-    controlLevel
-  );
+  const vulnerability = calculateVulnerability(inherentLevel, controlLevel);
 
   // Guardar una nueva evaluación.
   const evaluation = await createControlEvaluation({
@@ -376,17 +292,11 @@ export async function createControlEvaluationController(req, res) {
   });
 
   if (evaluation?.error === "USER_NOT_FOUND") {
-    throw new HttpError(
-      403,
-      "No se pudo asociar la evaluación con un usuario activo."
-    );
+    throw new HttpError(403, "No se pudo asociar la evaluación con un usuario activo.");
   }
 
   if (evaluation?.error === "CONTROL_NOT_FOUND") {
-    throw new HttpError(
-      404,
-      "El control seleccionado no existe."
-    );
+    throw new HttpError(404, "El control seleccionado no existe.");
   }
 
   res.status(201).json({

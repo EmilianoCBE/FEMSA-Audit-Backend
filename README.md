@@ -72,12 +72,66 @@ tests/            → pruebas con node --test
 | GET | `/api/ping` | `{"msg":"pong"}` |
 | GET | `/api/health` | Estado de la conexión a la base de datos (503 si no responde) |
 | — | `/api/auth/*` | Login, sesión, logout y Microsoft Entra ID (ver [AUTH.md](AUTH.md)) |
+| GET | `/api/users` | US02 Karla: lista de usuarios con su rol (solo Administrador) |
+| GET | `/api/users/roles` | US02 Karla: catálogo de roles (solo Administrador) |
+| POST | `/api/users` | US02 Karla: alta de usuario `{ firstName, lastName, role_id, password }`; genera `nombre.apellido@femsa.com` (con sufijo si existe) (solo Administrador) |
+| PUT | `/api/users/:id/role` | US02 Karla: cambia el rol `{ role_id }`; protege al último administrador activo (solo Administrador) |
+| POST | `/api/risks/classify` | US07 Karla: `{ probability, impact }` (1–5) → puntaje y nivel (Bajo 1–4, Medio 5–9, Alto 10–16, Crítico 17–25) |
+| GET | `/api/risk-library` | US07 Karla: biblioteca de riesgos; filtros `search` y `department` |
+| GET | `/api/risk-library/:id` | US07 Karla: un riesgo de la biblioteca |
+| GET | `/api/risk-evaluations` | US07 Karla: historial paginado; filtros `search`, `department`, `level`, `fromDate`, `toDate`, `page`, `pageSize` |
+| POST | `/api/risk-evaluations` | US07 Karla: guarda `{ riskLibraryId, probability, impact }`; el servidor calcula puntaje y nivel y usa el usuario de la sesión |
+| GET | `/api/risk-evaluations/summary` | US07 Karla: indicadores y datos de las gráficas (mismos filtros, sin paginación) |
+| GET | `/api/risk-evaluations/risk/:riskLibraryId` | US07 Karla: evaluaciones de un riesgo |
+| GET | `/api/risk-evaluations/compare/:riskLibraryId` | US07 Karla: evaluaciones de un riesgo para comparar |
 | GET | `/api/designer/layouts` | US03 Magda: lista layouts disponibles para abrir en el Designer |
 | GET | `/api/designer/layouts/:layoutId` | US03 Magda: obtiene un layout con sus elementos del canvas |
 | POST | `/api/designer/layouts` | US03 Magda: crea un layout/módulo visual configurable |
 | PUT | `/api/designer/layouts/:layoutId/canvas` | US03 Magda: guarda posiciones y configuración después del drag & drop |
+| GET | `/api/apps/:appId/versions` | US11 Rafael: `{ versions, designer, canEdit }`: historial sin la configuración ni los borradores descartados; `designer` dice qué versión coincide con el lienzo y si tiene cambios sin versión |
+| GET | `/api/apps/:appId/versions/:versionId` | US11 Rafael: detalle de una versión con su `config` completa |
+| POST | `/api/apps/:appId/versions` | US11 Rafael: guarda `{ config, changes[] }` como nuevo borrador (`v1`, `v2`, …); 409 si es idéntica a la más reciente |
+| POST | `/api/apps/:appId/versions/:versionId/publish` | US11 Rafael: publica un borrador y guarda quién lo publicó; la vigente anterior pasa a archivada |
+| POST | `/api/apps/:appId/versions/:versionId/discard` | US11 Rafael: descarta un borrador (sale del historial; su número no se reutiliza) |
+| POST | `/api/apps/:appId/versions/:versionId/restore` | US11 Rafael: `{ version, backup }`: respalda el lienzo si tiene cambios sin versión, crea un borrador con la configuración de esa versión y la aplica al Designer |
+| POST | `/api/ai/designer/analyze` | US15–US17 Emiliano: recibe `{ appId }` y devuelve sugerencias explicadas (reglas + IA) para un formulario del Designer; no cambia nada |
+| POST | `/api/ai/recommendations/:id/decision` | US17 Emiliano: registra `{ decision: "accepted" \| "rejected" \| "replaced", change? }`; una sola vez por sugerencia (409) |
+| GET | `/api/ai/designer/metrics?appId=` | US17 Emiliano: aceptación por origen (reglas / IA) y latencia promedio de la IA |
 
 Los errores responden `{ "msg": "..." }` con su código HTTP.
+
+Las rutas `/api/users/*`, `/api/risks/*`, `/api/risk-library/*` y `/api/risk-evaluations/*` requieren sesión; las de
+usuarios además el rol Administrador (`role_id` 2). Las tablas `RISK_LIBRARY` y `RISK_EVALUATION` ya existen en la BD
+compartida, pero todavía no tienen migración en `db/migrations/` (pendiente).
+
+Las rutas `/api/apps/*` requieren sesión; guardar, publicar, descartar y restaurar además requieren el rol
+Administrador o Creador de aplicaciones. Antes de usarlas crea o actualiza la tabla con `npm run versions:migrate`
+(corre `002` y `004`; requiere haber corrido `npm run auth:migrate`). `appId` es el id de la plantilla del Designer.
+
+El asistente de IA (`/api/ai/*`, requiere sesión) usa `AI_PROVIDER=mock` por defecto: responde sin llamar a ningún
+servicio externo. Las reglas de inconsistencias siempre responden; si el proveedor falla o tarda más de `AI_TIMEOUT_MS`,
+la respuesta trae `aiAvailable: false` y solo las reglas.
+Las sugerencias y las decisiones se guardan en `dbo.AppAiRecommendations`: créala con `npm run ai:migrate` (requiere
+`npm run auth:migrate`). Si la tabla no existe o la BD falla, el análisis responde igual con `recorded: false`.
+Para usar Gemini: `AI_PROVIDER=gemini` y `GEMINI_API_KEY` en `.env`; verifica con `npm run ai:check`.
+
+## Despliegue (Vercel)
+
+La API es el proyecto `femsa-audit-api` de Vercel (Express detectado como una sola función, `framework: "express"` en
+`vercel.json`). Solo despliega el pipeline (`.github/workflows/ci.yml`): `develop` → staging
+(`femsa-audit-api-staging.vercel.app`), `main` → producción (`femsa-audit-api.vercel.app`). El front llama a `/api` en su
+propio dominio y Vercel lo reenvía a la API, así las cookies de sesión son del mismo sitio.
+
+Requisitos (una sola vez):
+
+- Secrets del repo: `VERCEL_TOKEN`, `VERCEL_ORG_ID`, `VERCEL_PROJECT_ID` (del proyecto `femsa-audit-api`).
+- Variables del proyecto en Vercel (Production y Preview): `DB_*`, `NODE_ENV=production`, `AUTH_SECRET`, `WEB_ORIGIN`,
+  `WEB_ORIGIN_PATTERN`, `AI_PROVIDER=gemini`, `GEMINI_API_KEY` y, si se usa Entra ID, `ENTRA_*`.
+- Azure SQL debe aceptar conexiones desde Vercel (Vercel gratuito no tiene IP fija): regla de firewall que lo permita,
+  autorizada por quien administra la base compartida.
+
+Límite conocido: el lienzo del Designer vive en memoria; en Vercel puede haber varias instancias, así que lo que no se
+guarde como versión puede perderse. Las versiones, evaluaciones, usuarios y decisiones de IA sí están en Azure SQL.
 
 ### Al agregar tablas y endpoints
 

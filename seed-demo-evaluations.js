@@ -1,10 +1,5 @@
-
 import { getPool, sql } from "./db/db.js";
-import {
-  calculateInherentRisk,
-  calculateControlLevel,
-  calculateVulnerability,
-} from "./utils/riskMatrices.js";
+import { calculateInherentRisk, calculateControlLevel, calculateVulnerability } from "./utils/riskMatrices.js";
 
 const groups = [
   { riskId: 23, ids: [89] },
@@ -28,8 +23,7 @@ const groups = [
   { riskId: 51, ids: [49, 51, 52, 53] },
 ];
 
-const comment =
-  "Evaluación de demostración FEMSA - lote de pruebas noviembre 2026.";
+const comment = "Evaluación de demostración FEMSA - lote de pruebas noviembre 2026.";
 
 async function main() {
   const pool = await getPool();
@@ -42,20 +36,17 @@ async function main() {
       ORDER BY evaluated_at DESC, evaluation_id DESC;
     `);
 
-    const evaluatorId =
-      evaluatorResult.recordset[0]?.evaluated_by_user_id;
+    const evaluatorId = evaluatorResult.recordset[0]?.evaluated_by_user_id;
 
     if (evaluatorId == null) {
-      throw new Error(
-        "No se encontró un usuario evaluador válido en la evaluación existente del control 48."
-      );
+      throw new Error("No se encontró un usuario evaluador válido en la evaluación existente del control 48.");
     }
 
     const controls = groups.flatMap((group) =>
       group.ids.map((controlId) => ({
         riskId: group.riskId,
         controlId,
-      }))
+      })),
     );
 
     const transaction = new sql.Transaction(pool);
@@ -81,14 +72,10 @@ async function main() {
           `);
 
         if (check.recordset.length !== 1) {
-          throw new Error(
-            `El control ${item.controlId} no existe o no pertenece al riesgo ${item.riskId}.`
-          );
+          throw new Error(`El control ${item.controlId} no existe o no pertenece al riesgo ${item.riskId}.`);
         }
 
-        const existing = await new sql.Request(transaction)
-          .input("controlId", sql.Int, item.controlId)
-          .query(`
+        const existing = await new sql.Request(transaction).input("controlId", sql.Int, item.controlId).query(`
             SELECT COUNT(*) AS total
             FROM dbo.CONTROL_EVALUATION
             WHERE control_id = @controlId;
@@ -96,7 +83,7 @@ async function main() {
 
         if (existing.recordset[0].total > 0) {
           throw new Error(
-            `El control ${item.controlId} ya tiene evaluaciones. Se cancela el lote para evitar duplicados.`
+            `El control ${item.controlId} ya tiene evaluaciones. Se cancela el lote para evitar duplicados.`,
           );
         }
 
@@ -105,20 +92,11 @@ async function main() {
         const designRating = "Definido";
         const effectivenessRating = "Funcional";
 
-        const inherentLevel = calculateInherentRisk(
-          probability,
-          impact
-        );
+        const inherentLevel = calculateInherentRisk(probability, impact);
 
-        const controlLevel = calculateControlLevel(
-          designRating,
-          effectivenessRating
-        );
+        const controlLevel = calculateControlLevel(designRating, effectivenessRating);
 
-        const vulnerability = calculateVulnerability(
-          inherentLevel,
-          controlLevel
-        );
+        const vulnerability = calculateVulnerability(inherentLevel, controlLevel);
 
         const result = await new sql.Request(transaction)
           .input("controlId", sql.Int, item.controlId)
@@ -126,11 +104,7 @@ async function main() {
           .input("impact", sql.NVarChar(100), impact)
           .input("inherentLevel", sql.NVarChar(100), inherentLevel)
           .input("designRating", sql.NVarChar(100), designRating)
-          .input(
-            "effectivenessRating",
-            sql.NVarChar(100),
-            effectivenessRating
-          )
+          .input("effectivenessRating", sql.NVarChar(100), effectivenessRating)
           .input("controlLevel", sql.NVarChar(100), controlLevel)
           .input("vulnerability", sql.NVarChar(100), vulnerability)
           .input("evaluatorId", sql.Int, evaluatorId)

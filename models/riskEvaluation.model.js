@@ -1,24 +1,16 @@
+import { getPool, sql } from "../db/db.js";
 
-import { getPool, sql } from '../db/db.js';
-
-export async function createRiskEvaluation({
-  riskLibraryId,
-  probability,
-  impact,
-  score,
-  level,
-  authUserId,
-}) {
+export async function createRiskEvaluation({ riskLibraryId, probability, impact, score, level, authUserId }) {
   const pool = await getPool();
 
   const result = await pool
     .request()
-    .input('riskLibraryId', sql.NVarChar(30), riskLibraryId)
-    .input('probability', sql.Int, probability)
-    .input('impact', sql.Int, impact)
-    .input('score', sql.Int, score)
-    .input('level', sql.NVarChar(20), level)
-    .input('authUserId', sql.UniqueIdentifier, authUserId)
+    .input("riskLibraryId", sql.NVarChar(30), riskLibraryId)
+    .input("probability", sql.Int, probability)
+    .input("impact", sql.Int, impact)
+    .input("score", sql.Int, score)
+    .input("level", sql.NVarChar(20), level)
+    .input("authUserId", sql.UniqueIdentifier, authUserId)
     .query(`
       INSERT INTO dbo.RISK_EVALUATION (
         risk_library_id,
@@ -65,7 +57,7 @@ export async function getRecentRiskEvaluations(limit = 5) {
 
   const result = await pool
     .request()
-    .input('limit', sql.Int, limit)
+    .input("limit", sql.Int, limit)
     .query(`
       SELECT TOP (@limit)
         e.evaluation_id,
@@ -91,9 +83,9 @@ export async function getRecentRiskEvaluations(limit = 5) {
 }
 
 export async function getRiskEvaluations({
-  search = '',
-  department = '',
-  level = '',
+  search = "",
+  department = "",
+  level = "",
   fromDate = null,
   toDate = null,
   page = 1,
@@ -102,13 +94,13 @@ export async function getRiskEvaluations({
   const pool = await getPool();
   const request = pool.request();
 
-  request.input('search', sql.NVarChar(200), `%${search}%`);
-  request.input('department', sql.NVarChar(100), department || null);
-  request.input('level', sql.NVarChar(20), level || null);
-  request.input('fromDate', sql.DateTime2, fromDate);
-  request.input('toDate', sql.DateTime2, toDate);
-  request.input('offset', sql.Int, (page - 1) * pageSize);
-  request.input('pageSize', sql.Int, pageSize);
+  request.input("search", sql.NVarChar(200), `%${search}%`);
+  request.input("department", sql.NVarChar(100), department || null);
+  request.input("level", sql.NVarChar(20), level || null);
+  request.input("fromDate", sql.DateTime2, fromDate);
+  request.input("toDate", sql.DateTime2, toDate);
+  request.input("offset", sql.Int, (page - 1) * pageSize);
+  request.input("pageSize", sql.Int, pageSize);
 
   const result = await request.query(`
     SELECT
@@ -189,20 +181,20 @@ export async function getRiskEvaluations({
 }
 
 export async function getRiskEvaluationSummary({
-  search = '',
-  department = '',
-  level = '',
+  search = "",
+  department = "",
+  level = "",
   fromDate = null,
   toDate = null,
 } = {}) {
   const pool = await getPool();
   const request = pool.request();
 
-  request.input('search', sql.NVarChar(200), `%${search}%`);
-  request.input('department', sql.NVarChar(100), department || null);
-  request.input('level', sql.NVarChar(20), level || null);
-  request.input('fromDate', sql.DateTime2, fromDate);
-  request.input('toDate', sql.DateTime2, toDate);
+  request.input("search", sql.NVarChar(200), `%${search}%`);
+  request.input("department", sql.NVarChar(100), department || null);
+  request.input("level", sql.NVarChar(20), level || null);
+  request.input("fromDate", sql.DateTime2, fromDate);
+  request.input("toDate", sql.DateTime2, toDate);
 
   const result = await request.query(`
     ;WITH FilteredEvaluations AS (
@@ -416,11 +408,11 @@ export async function getRiskEvaluationSummary({
       impact: Number(item.impact),
       count: Number(item.count),
     })),
-    
+
     byDepartmentLevel: result.recordsets[5].map((item) => ({
-        department: item.department,
-        level: item.level,
-        count: Number(item.count),
+      department: item.department,
+      level: item.level,
+      count: Number(item.count),
     })),
   };
 }
@@ -430,7 +422,7 @@ export async function getEvaluationsForRisk(riskLibraryId) {
 
   const result = await pool
     .request()
-    .input('riskLibraryId', sql.NVarChar(30), riskLibraryId)
+    .input("riskLibraryId", sql.NVarChar(30), riskLibraryId)
     .query(`
       SELECT TOP (2)
         e.evaluation_id,
@@ -456,16 +448,13 @@ export async function getEvaluationsForRisk(riskLibraryId) {
   return result.recordset;
 }
 
-export async function getRiskEvaluationsByRiskId(
-  riskLibraryId,
-  limit = 100
-) {
+export async function getRiskEvaluationsByRiskId(riskLibraryId, limit = 100) {
   const pool = await getPool();
 
   const result = await pool
     .request()
-    .input('riskLibraryId', sql.NVarChar(30), riskLibraryId)
-    .input('limit', sql.Int, limit)
+    .input("riskLibraryId", sql.NVarChar(30), riskLibraryId)
+    .input("limit", sql.Int, limit)
     .query(`
       SELECT TOP (@limit)
         e.evaluation_id,
@@ -490,7 +479,3 @@ export async function getRiskEvaluationsByRiskId(
 
   return result.recordset;
 }
-
-
-
-

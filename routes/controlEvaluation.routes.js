@@ -7,10 +7,7 @@ import {
   createControlEvaluationController,
 } from "../controllers/controlEvaluation.controller.js";
 
-import {
-  requireAuth,
-  sameOrigin,
-} from "../middlewares/auth.js";
+import { requireAuth, sameOrigin } from "../middlewares/auth.js";
 
 const router = Router();
 

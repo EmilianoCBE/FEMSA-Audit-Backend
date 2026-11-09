@@ -1,27 +1,8 @@
+const PROBABILITIES = ["Inminente", "Altamente probable", "Probable", "No probable", "Remota"];
 
-const PROBABILITIES = [
-  "Inminente",
-  "Altamente probable",
-  "Probable",
-  "No probable",
-  "Remota",
-];
+const IMPACTS = ["Menor", "Bajo", "Moderado", "Alto", "Crítico"];
 
-const IMPACTS = [
-  "Menor",
-  "Bajo",
-  "Moderado",
-  "Alto",
-  "Crítico",
-];
-
-const CONTROL_RATINGS = [
-  "Inicial",
-  "Funcional",
-  "Definido",
-  "Gestionado",
-  "Optimizado",
-];
+const CONTROL_RATINGS = ["Inicial", "Funcional", "Definido", "Gestionado", "Optimizado"];
 
 // Filas: probabilidad. Columnas: impacto.
 const INHERENT_RISK_MATRIX = [
@@ -78,48 +59,28 @@ function getMatrixPosition(value, allowedValues, fieldName) {
 }
 
 export function calculateInherentRisk(probability, impact) {
-  const row = getMatrixPosition(
-    probability,
-    PROBABILITIES,
-    "La probabilidad"
-  );
+  const row = getMatrixPosition(probability, PROBABILITIES, "La probabilidad");
 
-  const column = getMatrixPosition(
-    impact,
-    IMPACTS,
-    "El impacto"
-  );
+  const column = getMatrixPosition(impact, IMPACTS, "El impacto");
 
   return INHERENT_RISK_MATRIX[row][column];
 }
 
 export function calculateControlLevel(designRating, effectivenessRating) {
-  const row = getMatrixPosition(
-    designRating,
-    CONTROL_RATINGS,
-    "El diseño"
-  );
+  const row = getMatrixPosition(designRating, CONTROL_RATINGS, "El diseño");
 
-  const column = getMatrixPosition(
-    effectivenessRating,
-    CONTROL_RATINGS,
-    "La efectividad"
-  );
+  const column = getMatrixPosition(effectivenessRating, CONTROL_RATINGS, "La efectividad");
 
   return CONTROL_LEVEL_MATRIX[row][column];
 }
 
 export function calculateVulnerability(inherentLevel, controlLevel) {
-  const row = getMatrixPosition(
-    inherentLevel,
-    ["Crítico", "Alto", "Moderado", "Bajo", "Menor"],
-    "El riesgo inherente"
-  );
+  const row = getMatrixPosition(inherentLevel, ["Crítico", "Alto", "Moderado", "Bajo", "Menor"], "El riesgo inherente");
 
   const column = getMatrixPosition(
     controlLevel,
     ["Optimizado", "Gestionado", "Definido", "Funcional", "Inicial"],
-    "El nivel de control"
+    "El nivel de control",
   );
 
   return VULNERABILITY_MATRIX[row][column];

@@ -1,4 +1,3 @@
-
 import { getPool, sql } from "../db/db.js";
 
 /**
@@ -104,7 +103,6 @@ const catalogInfoApply = `
   ) AS catalog_info
 `;
 
-
 /**
  * US07 - Obtiene los riesgos registrados y sus controles asociados.
  * Utiliza RISK y CONTROL, no RISK_LIBRARY.
@@ -174,7 +172,6 @@ export async function findRisksWithControls() {
 
   return result.recordset;
 }
-
 
 /**
  * US07 - Obtiene un riesgo, sus controles y la última evaluación
@@ -262,7 +259,6 @@ export async function findRiskWithControls(riskTrackingId) {
   return result.recordset;
 }
 
-
 /**
  * US07 - Obtiene el historial completo de evaluaciones de un control.
  * Las evaluaciones anteriores se conservan.
@@ -329,7 +325,6 @@ export async function findControlEvaluationHistory(controlId) {
 
   return result.recordset;
 }
-
 
 /**
  * US07 - Guarda una nueva evaluación de un control.

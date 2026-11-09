@@ -1,5 +1,5 @@
-import { classifyRisk } from '../models/risk.model.js';
-import { HttpError } from '../utils/httpErrors.js';
+import { classifyRisk } from "../models/risk.model.js";
+import { HttpError } from "../utils/httpErrors.js";
 
 /**
  * US07
@@ -15,32 +15,15 @@ export async function classifyRiskController(req, res) {
   const numericProbability = Number(probability);
   const numericImpact = Number(impact);
 
-  if (
-    !Number.isInteger(numericProbability) ||
-    numericProbability < 1 ||
-    numericProbability > 5
-  ) {
-    throw new HttpError(
-      400,
-      'La probabilidad debe ser un número entero entre 1 y 5.'
-    );
+  if (!Number.isInteger(numericProbability) || numericProbability < 1 || numericProbability > 5) {
+    throw new HttpError(400, "La probabilidad debe ser un número entero entre 1 y 5.");
   }
 
-  if (
-    !Number.isInteger(numericImpact) ||
-    numericImpact < 1 ||
-    numericImpact > 5
-  ) {
-    throw new HttpError(
-      400,
-      'El impacto debe ser un número entero entre 1 y 5.'
-    );
+  if (!Number.isInteger(numericImpact) || numericImpact < 1 || numericImpact > 5) {
+    throw new HttpError(400, "El impacto debe ser un número entero entre 1 y 5.");
   }
 
-  const result = classifyRisk(
-    numericProbability,
-    numericImpact
-  );
+  const result = classifyRisk(numericProbability, numericImpact);
 
   res.json({
     result,

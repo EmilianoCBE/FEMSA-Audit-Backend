@@ -1,4 +1,3 @@
-
 import { getPool, sql } from "./db/db.js";
 
 import {
@@ -11,8 +10,7 @@ import {
 const RISK_ID = 51;
 const EXPECTED_PENDING = 77;
 
-const COMMENT =
-  "Evaluación de demostración FEMSA - prueba de mediana RSK-350022 noviembre 2026.";
+const COMMENT = "Evaluación de demostración FEMSA - prueba de mediana RSK-350022 noviembre 2026.";
 
 // Perfiles variados. Todos los resultados se calculan con las matrices oficiales.
 const profiles = [
@@ -90,8 +88,7 @@ async function main() {
       ORDER BY evaluated_at DESC, evaluation_id DESC;
     `);
 
-    const evaluatorId =
-      evaluatorResult.recordset[0]?.evaluated_by_user_id;
+    const evaluatorId = evaluatorResult.recordset[0]?.evaluated_by_user_id;
 
     if (evaluatorId == null) {
       throw new Error("No se encontró un usuario evaluador válido.");
@@ -99,7 +96,8 @@ async function main() {
 
     // Recuperar únicamente los controles de RSK-350022
     // que todavía no tienen ninguna evaluación.
-    const controlsResult = await pool.request()
+    const controlsResult = await pool
+      .request()
       .input("riskId", sql.Int, RISK_ID)
       .query(`
         SELECT c.control_id
@@ -120,7 +118,7 @@ async function main() {
 
     if (controls.length !== EXPECTED_PENDING) {
       throw new Error(
-        `Se esperaban ${EXPECTED_PENDING} controles pendientes, pero se encontraron ${controls.length}. No se insertó nada.`
+        `Se esperaban ${EXPECTED_PENDING} controles pendientes, pero se encontraron ${controls.length}. No se insertó nada.`,
       );
     }
 
@@ -128,20 +126,11 @@ async function main() {
     const evaluations = controls.map((control, index) => {
       const profile = profiles[index % profiles.length];
 
-      const inherentLevel = calculateInherentRisk(
-        profile.probability,
-        profile.impact
-      );
+      const inherentLevel = calculateInherentRisk(profile.probability, profile.impact);
 
-      const controlLevel = calculateControlLevel(
-        profile.designRating,
-        profile.effectivenessRating
-      );
+      const controlLevel = calculateControlLevel(profile.designRating, profile.effectivenessRating);
 
-      const vulnerability = calculateVulnerability(
-        inherentLevel,
-        controlLevel
-      );
+      const vulnerability = calculateVulnerability(inherentLevel, controlLevel);
 
       return {
         controlId: control.control_id,
@@ -156,8 +145,7 @@ async function main() {
     const distribution = {};
 
     for (const evaluation of evaluations) {
-      distribution[evaluation.vulnerability] =
-        (distribution[evaluation.vulnerability] || 0) + 1;
+      distribution[evaluation.vulnerability] = (distribution[evaluation.vulnerability] || 0) + 1;
     }
 
     console.log("\nDistribución calculada antes de insertar:");
@@ -165,13 +153,11 @@ async function main() {
       Object.entries(distribution).map(([level, total]) => ({
         vulnerabilidad: level,
         controles: total,
-      }))
+      })),
     );
 
     if (Object.keys(distribution).length < 4) {
-      throw new Error(
-        "Las combinaciones no generaron al menos cuatro niveles distintos. No se insertó nada."
-      );
+      throw new Error("Las combinaciones no generaron al menos cuatro niveles distintos. No se insertó nada.");
     }
 
     // Insertar todo en una sola transacción.
@@ -186,11 +172,7 @@ async function main() {
           .input("impact", sql.NVarChar(100), evaluation.impact)
           .input("inherentLevel", sql.NVarChar(100), evaluation.inherentLevel)
           .input("designRating", sql.NVarChar(100), evaluation.designRating)
-          .input(
-            "effectivenessRating",
-            sql.NVarChar(100),
-            evaluation.effectivenessRating
-          )
+          .input("effectivenessRating", sql.NVarChar(100), evaluation.effectivenessRating)
           .input("controlLevel", sql.NVarChar(100), evaluation.controlLevel)
           .input("vulnerability", sql.NVarChar(100), evaluation.vulnerability)
           .input("evaluatorId", sql.Int, evaluatorId)
@@ -228,14 +210,14 @@ async function main() {
       console.log("\n¡EVALUACIONES INSERTADAS CORRECTAMENTE!");
       console.log("Nuevas evaluaciones:", evaluations.length);
       console.log("Riesgo: RSK-350022");
-
     } catch (error) {
       await transaction.rollback();
       throw error;
     }
 
     // Consultar la última evaluación de cada uno de los 81 controles.
-    const latestResult = await pool.request()
+    const latestResult = await pool
+      .request()
       .input("riskId", sql.Int, RISK_ID)
       .query(`
         SELECT
@@ -252,22 +234,19 @@ async function main() {
           AND ultima.vulnerability IS NOT NULL;
       `);
 
-    const vulnerabilities = latestResult.recordset.map(
-      row => row.vulnerability
-    );
+    const vulnerabilities = latestResult.recordset.map((row) => row.vulnerability);
 
     const residualRisk = calculateResidualRisk(vulnerabilities);
 
     console.log("\nRESULTADO DE LA MEDIANA:");
     console.log("Controles considerados:", vulnerabilities.length);
     console.log("Riesgo residual:", residualRisk);
-
   } finally {
     await pool.close();
   }
 }
 
-main().catch(error => {
+main().catch((error) => {
   console.error("\nERROR: No se completó el proceso.");
   console.error(error);
   process.exitCode = 1;
