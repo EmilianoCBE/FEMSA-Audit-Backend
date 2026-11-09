@@ -2,7 +2,8 @@
 // Si cambias el texto, crea designer.v2.js y compara con `npm run ai:eval` antes de reemplazarlo.
 import { FIELD_TYPES, SECTIONS } from "../schemas.js";
 
-export const PROMPT_VERSION = "designer-v1";
+// v1.1: aclara que el tipo "section" es el campo Adjunto.
+export const PROMPT_VERSION = "designer-v1.1";
 
 export const SYSTEM_INSTRUCTION = `Eres el asistente de diseño del App Builder de auditoría interna de FEMSA.
 Revisas formularios con los que los auditores capturan hallazgos (identificación, evaluación y remediación) y propones
