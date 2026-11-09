@@ -17,6 +17,7 @@
     "auth:create-user": "node scripts/create-user.js",
     "versions:migrate": "node scripts/migrate-versions.js",
     "ai:check": "node scripts/ai-check.js",
+    "ai:eval": "node scripts/ai-eval.js",
     "ai:migrate": "node scripts/migrate-ai.js",
     "permissions:migrate": "node scripts/migrate-permissions.js"
   },
