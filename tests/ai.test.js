@@ -128,3 +128,51 @@ test("US18 si la IA falla o tarda, responde solo con reglas y aiAvailable false"
     assert.ok(Date.now() - started < 1000);
   }
 });
+
+test("US18 dice por qué no hay IA y, tras una falla, deja de llamarla un rato", async () => {
+  let calls = 0;
+  const broken = {
+    name: "roto",
+    promptVersion: "x",
+    suggestDesigner: async () => {
+      calls++;
+      throw new Error("503");
+    },
+  };
+  const first = await analyzeDesigner(appId, { provider: broken, timeoutMs: 50 });
+  assert.equal(first.aiAvailable, false);
+  assert.equal(first.aiUnavailableReason, "error");
+  assert.ok(Date.parse(first.aiRetryAt) > Date.now());
+  assert.equal(calls, 1);
+
+  // Mientras dura la pausa no se llama a la IA: responden las reglas al instante.
+  const second = await analyzeDesigner(appId, { provider: broken, timeoutMs: 50 });
+  assert.equal(second.aiUnavailableReason, "paused");
+  assert.equal(second.aiRetryAt, first.aiRetryAt);
+  assert.equal(calls, 1);
+  assert.ok(second.suggestions.length > 0 && second.suggestions.every((s) => s.source === "rules"));
+
+  const slow = { name: "lento", promptVersion: "x", suggestDesigner: () => new Promise(() => {}) };
+  assert.equal((await analyzeDesigner(appId, { provider: slow, timeoutMs: 30 })).aiUnavailableReason, "timeout");
+
+  const missing = { name: "gemini", promptVersion: null, configured: false, suggestDesigner: broken.suggestDesigner };
+  const notConfigured = await analyzeDesigner(appId, { provider: missing, timeoutMs: 50 });
+  assert.equal(notConfigured.aiUnavailableReason, "not-configured");
+  assert.equal(notConfigured.aiRetryAt, null);
+  assert.equal(calls, 1, "si no está configurada ni se intenta");
+});
+
+test("US18 con IA disponible no hay motivo de falla", async () => {
+  const result = await analyzeDesigner(appId);
+  assert.equal(result.aiAvailable, true);
+  assert.equal(result.aiUnavailableReason, null);
+  assert.equal(result.aiRetryAt, null);
+});
+
+test("US18 GET /ai/status pide sesión e informa sin llamar a la IA", async () => {
+  assert.equal((await fetch(`${origin}/ai/status`)).status, 401);
+  const response = await fetch(`${origin}/ai/status`, { headers });
+  assert.equal(response.status, 200);
+  assert.equal(response.headers.get("cache-control"), "no-store");
+  assert.deepEqual(await response.json(), { aiAvailable: true, reason: null, retryAt: null, provider: "mock" });
+});
