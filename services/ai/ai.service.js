@@ -7,6 +7,7 @@ import { aiRecommendationsRepository } from "../../repositories/aiRecommendation
 import { badRequest, HttpError, notFoundError } from "../../utils/httpErrors.js";
 import { hydrateDesignerLayout } from "../designer.service.js";
 import { validateAppId } from "../versions.service.js";
+import { aiStatus, checkAiStatus, recordFailure, recordSuccess } from "./availability.js";
 import { getAiProvider } from "./providers/index.js";
 import { runDesignerRules } from "./rules/designer.rules.js";
 import { changeSchema, providerResponseSchema, SECTIONS, suggestionSchema } from "./schemas.js";
@@ -40,7 +41,7 @@ function withTimeout(run, timeoutMs) {
   const timeout = new Promise((_, reject) => {
     timer = setTimeout(() => {
       controller.abort();
-      reject(new Error(`La IA no respondió en ${timeoutMs} ms.`));
+      reject(Object.assign(new Error(`La IA no respondió en ${timeoutMs} ms.`), { code: "AI_TIMEOUT" }));
     }, timeoutMs);
   });
   return Promise.race([run(controller.signal), timeout]).finally(() => clearTimeout(timer));
@@ -90,20 +91,30 @@ export async function analyzeDesigner(
 
   const started = Date.now();
   let aiSuggestions = [];
-  let aiAvailable = true;
-  try {
-    aiSuggestions = await withTimeout(async (signal) => {
-      // Si una respuesta no deja ninguna sugerencia válida y queda tiempo, se pide una vez más.
-      let valid = [];
-      for (let attempt = 0; attempt < 2; attempt++) {
-        const raw = await provider.suggestDesigner({ fields, known: ruleSuggestions }, { signal });
-        valid = validateAiSuggestions(raw, fields, ruleSuggestions);
-        if (valid.length > 0 || Date.now() - started > timeoutMs / 2) break;
-      }
-      return valid;
-    }, timeoutMs);
-  } catch {
-    aiAvailable = false;
+  // US18: si no está configurada o falló hace poco, ni se llama: responden las reglas al instante.
+  const status = aiStatus(provider);
+  let aiAvailable = status.aiAvailable;
+  let aiUnavailableReason = status.reason;
+  let aiRetryAt = status.retryAt;
+  if (aiAvailable) {
+    try {
+      aiSuggestions = await withTimeout(async (signal) => {
+        // Si una respuesta no deja ninguna sugerencia válida y queda tiempo, se pide una vez más.
+        let valid = [];
+        for (let attempt = 0; attempt < 2; attempt++) {
+          const raw = await provider.suggestDesigner({ fields, known: ruleSuggestions }, { signal });
+          valid = validateAiSuggestions(raw, fields, ruleSuggestions);
+          if (valid.length > 0 || Date.now() - started > timeoutMs / 2) break;
+        }
+        return valid;
+      }, timeoutMs);
+      recordSuccess(provider);
+    } catch (error) {
+      aiAvailable = false;
+      aiUnavailableReason = error?.code === "AI_TIMEOUT" ? "timeout" : "error";
+      recordFailure(provider, aiUnavailableReason);
+      aiRetryAt = aiStatus(provider).retryAt;
+    }
   }
 
   const latencyMs = Date.now() - started;
@@ -140,6 +151,8 @@ export async function analyzeDesigner(
   return {
     appId,
     aiAvailable,
+    aiUnavailableReason,
+    aiRetryAt,
     recorded,
     provider: provider.name,
     promptVersion: provider.promptVersion,
@@ -225,4 +238,10 @@ export async function getDesignerMetrics(appIdInput) {
     acceptanceRate: { rules: acceptanceRate(bySource.rules), ai: acceptanceRate(bySource.ai) },
     avgAiLatencyMs: aiLatency,
   };
+}
+
+/** US18: estado de la IA para avisar antes de analizar (comprobación ligera, como mucho una vez por minuto). */
+export async function getAiStatus({ provider = getAiProvider(), ...options } = {}) {
+  const { aiAvailable, reason, retryAt } = await checkAiStatus(provider, options);
+  return { aiAvailable, reason, retryAt, provider: provider.name };
 }

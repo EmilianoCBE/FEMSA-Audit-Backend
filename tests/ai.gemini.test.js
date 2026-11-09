@@ -155,3 +155,21 @@ test("US15 si la primera respuesta no trae nada válido, se reintenta una vez", 
   assert.equal(result.aiAvailable, true);
   assert.ok(result.suggestions.some((s) => s.source === "ai" && s.title === "Agregar causa"));
 });
+
+test("US18 la comprobación de Gemini consulta el modelo sin generar texto", async () => {
+  const requests = [];
+  const client = {
+    models: {
+      async get(request) {
+        requests.push(request);
+        return { name: `models/${request.model}` };
+      },
+      async generateContent() {
+        throw new Error("no debería generar");
+      },
+    },
+  };
+  const signal = AbortSignal.timeout(1000);
+  await createGeminiProvider({ client, model: "modelo-x" }).checkHealth({ signal });
+  assert.deepEqual(requests, [{ model: "modelo-x", config: { abortSignal: signal } }]);
+});

@@ -5,6 +5,7 @@ import { mockProvider } from "./mock.provider.js";
 const unavailableProvider = (name, reason) => ({
   name,
   promptVersion: null,
+  configured: false,
   async suggestDesigner() {
     throw new Error(reason);
   },
