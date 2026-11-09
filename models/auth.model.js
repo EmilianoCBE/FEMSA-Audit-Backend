@@ -90,6 +90,7 @@ export async function findSession(hash) {
     .query(`
       SELECT
         a.Id,
+        u.user_id AS DatabaseUserId,
         u.full_name AS Name,
         u.role_id AS RoleId,
         r.name AS Role
@@ -124,6 +125,7 @@ export async function deleteSession(hash) {
 export function publicUser(user) {
   return {
     id: user.Id,
+    databaseUserId: user.DatabaseUserId,
     name: user.Name,
     role: user.Role,
     roleId: user.RoleId,
