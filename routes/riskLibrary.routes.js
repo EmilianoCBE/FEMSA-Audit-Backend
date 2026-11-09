@@ -1,6 +1,10 @@
 import { Router } from "express";
 
-import { getRiskLibraryController, getRiskLibraryByIdController } from "../controllers/riskLibrary.controller.js";
+import {
+  getRiskLibraryController,
+  getRiskLibraryByIdController,
+  getRiskLibraryRegisterDetailsController,
+} from "../controllers/riskLibrary.controller.js";
 
 import { requireAuth } from "../middlewares/auth.js";
 
@@ -12,6 +16,8 @@ router.use((req, res, next) => {
 });
 
 router.get("/", requireAuth, getRiskLibraryController);
+
+router.get("/:id/register", requireAuth, getRiskLibraryRegisterDetailsController);
 
 router.get("/:id", requireAuth, getRiskLibraryByIdController);
 
