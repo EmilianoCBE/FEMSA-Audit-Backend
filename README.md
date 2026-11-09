@@ -115,7 +115,8 @@ la respuesta trae `aiAvailable: false` y solo las reglas (US18). Tras una falla 
 `AI_RETRY_AFTER_MS` (60 s por defecto): los análisis responden al instante y la pausa vive en memoria de cada instancia.
 Las sugerencias y las decisiones se guardan en `dbo.AppAiRecommendations`: créala con `npm run ai:migrate` (requiere
 `npm run auth:migrate`). Si la tabla no existe o la BD falla, el análisis responde igual con `recorded: false`.
-Para usar Gemini: `AI_PROVIDER=gemini` y `GEMINI_API_KEY` en `.env`; verifica con `npm run ai:check`.
+Para usar Gemini: `AI_PROVIDER=gemini` y `GEMINI_API_KEY` en `.env`; verifica con `npm run ai:check`. La evaluación
+(`npm run ai:eval`) y la revisión de privacidad están en [AI.md](AI.md).
 
 ## Despliegue (Vercel)
 

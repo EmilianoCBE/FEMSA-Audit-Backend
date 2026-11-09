@@ -10,7 +10,7 @@ import { validateAppId } from "../versions.service.js";
 import { aiStatus, checkAiStatus, recordFailure, recordSuccess } from "./availability.js";
 import { getAiProvider } from "./providers/index.js";
 import { runDesignerRules } from "./rules/designer.rules.js";
-import { changeSchema, providerResponseSchema, suggestionSchema } from "./schemas.js";
+import { changeSchema, providerResponseSchema, SECTIONS, suggestionSchema } from "./schemas.js";
 
 const DEFAULT_TIMEOUT_MS = 8000;
 
@@ -18,14 +18,18 @@ const DEFAULT_TIMEOUT_MS = 8000;
 const isMissingTable = (error) => error?.number === 208 || /Invalid object name/i.test(error?.message ?? "");
 const MISSING_TABLE_MESSAGE = "Falta la tabla dbo.AppAiRecommendations: ejecuta npm run ai:migrate.";
 
+/** Igual que el Designer (FieldsPanel): sin sección guardada, los 3 primeros campos son de identificación, los 3
+ * siguientes de evaluación y el resto de remediación. */
+const inferSection = (index) => (index < 3 ? "identificacion" : index < 6 ? "evaluacion" : "remediacion");
+
 /** Solo la estructura del formulario: es lo único que sale hacia el proveedor de IA (RNF-13). */
 export function toDesignerFields(elements = []) {
-  return elements.map((element) => ({
+  return elements.map((element, index) => ({
     id: String(element.id),
     type: element.type,
     label: typeof element.config?.label === "string" ? element.config.label : "",
     required: element.config?.required === true,
-    section: element.config?.section ?? null,
+    section: SECTIONS.includes(element.config?.section) ? element.config.section : inferSection(index),
     formula: typeof element.config?.formula === "string" ? element.config.formula : null,
   }));
 }
