@@ -14,7 +14,7 @@ router.use((req, res, next) => {
   next();
 });
 
-/** US18: si la IA está disponible (sin llamarla), para avisar antes de analizar. */
+/** US18: si la IA está disponible (comprobación ligera, sin generar texto), para avisar antes de analizar. */
 router.get("/status", requireAuth, getAiStatusController);
 
 /** US15-US17: analiza un formulario del Designer y devuelve propuestas; no cambia nada. */

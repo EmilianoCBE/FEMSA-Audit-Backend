@@ -7,7 +7,7 @@ import { aiRecommendationsRepository } from "../../repositories/aiRecommendation
 import { badRequest, HttpError, notFoundError } from "../../utils/httpErrors.js";
 import { hydrateDesignerLayout } from "../designer.service.js";
 import { validateAppId } from "../versions.service.js";
-import { aiStatus, recordFailure, recordSuccess } from "./availability.js";
+import { aiStatus, checkAiStatus, recordFailure, recordSuccess } from "./availability.js";
 import { getAiProvider } from "./providers/index.js";
 import { runDesignerRules } from "./rules/designer.rules.js";
 import { changeSchema, providerResponseSchema, suggestionSchema } from "./schemas.js";
@@ -236,8 +236,8 @@ export async function getDesignerMetrics(appIdInput) {
   };
 }
 
-/** US18: estado de la IA sin llamarla, para avisar antes de analizar. */
-export function getAiStatus({ provider = getAiProvider() } = {}) {
-  const { aiAvailable, reason, retryAt } = aiStatus(provider);
+/** US18: estado de la IA para avisar antes de analizar (comprobación ligera, como mucho una vez por minuto). */
+export async function getAiStatus({ provider = getAiProvider(), ...options } = {}) {
+  const { aiAvailable, reason, retryAt } = await checkAiStatus(provider, options);
   return { aiAvailable, reason, retryAt, provider: provider.name };
 }

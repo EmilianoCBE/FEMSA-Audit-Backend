@@ -9,4 +9,4 @@ export const postRecommendationDecision = async (req, res) =>
 
 export const getDesignerMetricsController = async (req, res) => res.json(await getDesignerMetrics(req.query.appId));
 
-export const getAiStatusController = (_req, res) => res.json(getAiStatus());
+export const getAiStatusController = async (_req, res) => res.json(await getAiStatus());

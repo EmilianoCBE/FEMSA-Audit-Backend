@@ -8,6 +8,8 @@ export const mockProvider = {
   name: "mock",
   promptVersion: "mock-v1",
 
+  async checkHealth() {},
+
   async suggestDesigner({ fields }) {
     const suggestions = [];
 
