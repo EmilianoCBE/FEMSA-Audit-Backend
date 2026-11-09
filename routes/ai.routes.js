@@ -3,6 +3,7 @@ import {
   getAiStatusController,
   getDesignerMetricsController,
   postAnalyzeDesigner,
+  postAnalyzeWorkflow,
   postRecommendationDecision,
 } from "../controllers/ai.controller.js";
 import { requireAuth, sameOrigin } from "../middlewares/auth.js";
@@ -19,6 +20,9 @@ router.get("/status", requireAuth, getAiStatusController);
 
 /** US15-US17: analiza un formulario del Designer y devuelve propuestas; no cambia nada. */
 router.post("/designer/analyze", requireAuth, sameOrigin, postAnalyzeDesigner);
+
+/** US15 (RF-17/RF-18): recibe la estructura del flujo y devuelve transiciones y roles sugeridos; no guarda nada. */
+router.post("/workflow/analyze", requireAuth, sameOrigin, postAnalyzeWorkflow);
 
 /** US17: registra aceptar / rechazar / reemplazar de una sugerencia. */
 router.post("/recommendations/:id/decision", requireAuth, sameOrigin, postRecommendationDecision);

@@ -33,3 +33,53 @@ export const suggestionSchema = z.object({
 
 /** Respuesta esperada de un proveedor de IA. */
 export const providerResponseSchema = z.object({ suggestions: z.array(z.unknown()).max(20) });
+
+/* ---------- Workflow (US15 RF-17/RF-18) ---------- */
+
+/** Roles que pueden ejecutar una transición; deben coincidir con WORKFLOW_ROLES del front. */
+export const WORKFLOW_ROLES = ["Auditor", "Jefe de Auditoría", "Dirección de Auditoría", "Responsable del área"];
+
+const id = text(60);
+
+/** Lo único que llega del front y sale hacia la IA: estructura del flujo (RNF-13). */
+export const workflowInputSchema = z.object({
+  states: z
+    .array(z.object({ id, name: text(80), kind: text(30) }))
+    .min(1)
+    .max(30),
+  transitions: z
+    .array(z.object({ id, from: id, to: id, label: text(60), role: z.string().trim().max(60).nullable() }))
+    .max(60),
+  /** Revisiones de las reglas que el usuario ya está viendo, para que la IA no las repita. */
+  known: z
+    .array(
+      z.object({
+        title: text(160),
+        change: z.record(z.string(), z.unknown()).nullable().optional(),
+      }),
+    )
+    .max(30)
+    .default([]),
+});
+
+/** Operaciones que el front sabe aplicar al flujo (applyWorkflowChange). */
+export const workflowChangeSchema = z.discriminatedUnion("op", [
+  z.object({ op: z.literal("set-transition-role"), transitionId: id, role: z.enum(WORKFLOW_ROLES) }),
+  z.object({
+    op: z.literal("add-transition"),
+    from: id,
+    to: id,
+    label: text(60),
+    role: z.enum(WORKFLOW_ROLES),
+  }),
+]);
+
+export const workflowSuggestionSchema = z.object({
+  /** relation = transición nueva, role = rol para una transición, inconsistency = observación sin cambio. */
+  kind: z.enum(["relation", "role", "inconsistency"]),
+  title: text(160),
+  reason: text(600),
+  confidence: z.enum(["alta", "media", "baja"]),
+  target: z.object({ type: z.enum(["state", "transition"]), id }).optional(),
+  change: workflowChangeSchema.optional(),
+});

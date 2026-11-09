@@ -6,6 +6,10 @@ const unavailableProvider = (name, reason) => ({
   name,
   promptVersion: null,
   configured: false,
+  workflowPromptVersion: null,
+  async suggestWorkflow() {
+    throw new Error(reason);
+  },
   async suggestDesigner() {
     throw new Error(reason);
   },
