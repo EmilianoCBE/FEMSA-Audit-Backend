@@ -4,6 +4,7 @@ import { Router } from 'express';
 import {
   getRiskLibraryController,
   getRiskLibraryByIdController,
+  getRiskLibraryRegisterDetailsController,
 } from '../controllers/riskLibrary.controller.js';
 
 import {
@@ -22,6 +23,12 @@ router.get(
   '/',
   requireAuth,
   getRiskLibraryController
+);
+
+router.get(
+  '/:id/register',
+  requireAuth,
+  getRiskLibraryRegisterDetailsController
 );
 
 router.get(

@@ -2,6 +2,7 @@
 import {
   findRiskLibrary,
   findRiskLibraryById,
+  findRiskLibraryRegisterDetails,
 } from '../models/riskLibrary.model.js';
 
 export async function getRiskLibraryController(req, res) {
@@ -28,4 +29,29 @@ export async function getRiskLibraryByIdController(req, res) {
   }
 
   res.json({ risk });
+}
+
+export async function getRiskLibraryRegisterDetailsController(req, res, next) {
+  try {
+    const { id } = req.params;
+
+    const records = await findRiskLibraryRegisterDetails(id);
+
+    if (!records.length) {
+      return res.status(404).json({
+        message: 'Risk Library entry not found.',
+      });
+    }
+
+    return res.status(200).json({
+      riskLibrary: {
+        risk_library_id: records[0].risk_library_id,
+        risk_name: records[0].risk_name,
+        audit_department: records[0].audit_department,
+      },
+      records,
+    });
+  } catch (error) {
+    next(error);
+  }
 }
