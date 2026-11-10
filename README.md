@@ -102,6 +102,11 @@ tests/            → pruebas con node --test
 | POST | `/api/ai/workflow/generate` | RF-17 (fase 3 del workflow): recibe `{ description }` y propone un flujo completo (`workflow: { summary, states, transitions }` o `null`). Quita correos y teléfonos antes de enviar; no guarda ni aplica nada |
 | POST | `/api/ai/workflow/decisions` | Fase 3 del workflow: registra la decisión sobre una revisión de las reglas del flujo `{ appId, suggestion, decision, change? }` (201). Las de la IA se deciden con `/api/ai/recommendations/:id/decision` |
 | GET | `/api/ai/workflow/metrics?appId=` | Fase 3 del workflow: aceptación por origen (reglas / IA) del asistente del flujo, separada de la del Designer |
+| GET | `/api/workflow/instances?appId=&status=` | Workflow fase 4: procesos (hallazgos) de un formulario con su estado, versión anclada y plazo |
+| POST | `/api/workflow/instances` | Fase 4: inicia un proceso `{ appId, title }` con la versión **publicada**; queda anclado a ella y termina con ese flujo aunque se publique otra (201) |
+| GET | `/api/workflow/instances/:id` | Fase 4: detalle con el flujo de su versión, las acciones que el usuario puede ejecutar e historial |
+| POST | `/api/workflow/instances/:id/transitions` | Fase 4: `{ transitionId, comment?, evidence?, actionPlan? }`; valida versión, estado actual, rol del flujo, segregación de funciones y requisitos |
+| GET | `/api/workflow/instances/summary?appId=` | Fase 4: procesos en curso por versión (aviso al publicar) |
 | GET | `/api/ai/status` | US18: `{ aiAvailable, reason, retryAt, provider }` sin llamar a la IA. `reason`: `not-configured` o `paused` (falló hace poco). El análisis también trae `aiUnavailableReason` (`timeout`, `error`, …) y `aiRetryAt` |
 
 Los errores responden `{ "msg": "..." }` con su código HTTP.
@@ -122,6 +127,8 @@ Las sugerencias y las decisiones se guardan en `dbo.AppAiRecommendations`: créa
 `npm run auth:migrate`). El mismo comando aplica la migración 006 (columnas `Scope` y `Target` para el asistente del
 Workflow; las filas existentes quedan como Designer). Si la tabla no existe o la BD falla, el análisis responde igual
 con `recorded: false`.
+Los procesos del workflow (fase 4) usan `dbo.AppWorkflowInstances` y `dbo.AppWorkflowHistory`: créalas con
+`npm run workflow:migrate`. Sin ellas, `/api/workflow` responde 503 con la instrucción.
 Para usar Gemini: `AI_PROVIDER=gemini` y `GEMINI_API_KEY` en `.env`; verifica con `npm run ai:check`. La evaluación
 (`npm run ai:eval`) y la revisión de privacidad están en [AI.md](AI.md).
 

@@ -11,6 +11,7 @@ import riskLibraryRoutes from "./routes/riskLibrary.routes.js";
 import controlEvaluationRoutes from "./routes/controlEvaluation.routes.js";
 import designerRoutes from "./routes/designer.routes.js";
 import versionsRoutes from "./routes/versions.routes.js";
+import workflowRoutes from "./routes/workflow.routes.js";
 import aiRoutes from "./routes/ai.routes.js";
 import { isAllowedOrigin } from "./utils/origins.js";
 
@@ -51,6 +52,8 @@ app.use("/api/control-evaluations", requireModule("risks"), controlEvaluationRou
 app.use("/api/designer", requireModule("app-builder"), designerRoutes);
 app.use("/api/apps", requireModule("app-builder"), versionsRoutes);
 app.use("/api/ai", requireModule("app-builder"), aiRoutes);
+// Fase 4 del workflow: basta con poder ver el App Builder; cada paso lo autoriza el rol del flujo.
+app.use("/api/workflow", requireModule("app-builder", { readOnly: true }), workflowRoutes);
 app.use("/api", indexRoutes);
 
 app.use(notFound);
