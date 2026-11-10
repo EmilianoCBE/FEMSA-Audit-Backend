@@ -32,6 +32,8 @@ const defaultDesignerLayout = {
       config: { label: "Descripcion", required: true },
     },
   ],
+  // Flujo del proceso del formulario; null = todavía no se ha guardado uno (el front muestra la plantilla base).
+  workflow: null,
   createdAt: getCurrentDateIso(),
   updatedAt: getCurrentDateIso(),
 };
@@ -45,6 +47,7 @@ function copyDesignerLayout(designerLayout) {
       ...canvasElement,
       config: { ...canvasElement.config },
     })),
+    workflow: designerLayout.workflow ? structuredClone(designerLayout.workflow) : null,
   };
 }
 
@@ -63,6 +66,7 @@ export function createDesignerLayout({ name, elements }) {
     id: createDesignerId("layout"),
     name,
     elements: normalizeDesignerElements(elements),
+    workflow: null,
     createdAt,
     updatedAt: createdAt,
   };
@@ -77,6 +81,18 @@ export function saveDesignerCanvas(layoutId, elements) {
   if (!selectedDesignerLayout) return null;
 
   selectedDesignerLayout.elements = normalizeDesignerElements(elements);
+  selectedDesignerLayout.updatedAt = getCurrentDateIso();
+  hydratedLayoutIds.add(layoutId);
+
+  return copyDesignerLayout(selectedDesignerLayout);
+}
+
+/** Guarda el flujo del proceso del formulario (ya validado con parseWorkflow). */
+export function saveDesignerWorkflow(layoutId, workflow) {
+  const selectedDesignerLayout = layoutDesignerStore.get(layoutId);
+  if (!selectedDesignerLayout) return null;
+
+  selectedDesignerLayout.workflow = workflow ? structuredClone(workflow) : null;
   selectedDesignerLayout.updatedAt = getCurrentDateIso();
   hydratedLayoutIds.add(layoutId);
 

@@ -88,6 +88,7 @@ tests/            → pruebas con node --test
 | GET | `/api/designer/layouts/:layoutId` | US03 Magda: obtiene un layout con sus elementos del canvas |
 | POST | `/api/designer/layouts` | US03 Magda: crea un layout/módulo visual configurable |
 | PUT | `/api/designer/layouts/:layoutId/canvas` | US03 Magda: guarda posiciones y configuración después del drag & drop |
+| PUT | `/api/designer/layouts/:layoutId/workflow` | Workflow (fase 1): guarda `{ workflow }`, el flujo del proceso del formulario (estados, transiciones, roles). Viaja con el layout y entra en `AppVersions.config.workflow` al guardar una versión, así que se versiona, compara y restaura con los campos |
 | GET | `/api/apps/:appId/versions` | US11 Rafael: `{ versions, designer, canEdit }`: historial sin la configuración ni los borradores descartados; `designer` dice qué versión coincide con el lienzo y si tiene cambios sin versión |
 | GET | `/api/apps/:appId/versions/:versionId` | US11 Rafael: detalle de una versión con su `config` completa |
 | POST | `/api/apps/:appId/versions` | US11 Rafael: guarda `{ config, changes[] }` como nuevo borrador (`v1`, `v2`, …); 409 si es idéntica a la más reciente |
