@@ -4,6 +4,10 @@ El asistente del Designer combina reglas propias (US16, siempre disponibles) con
 propone: nada se aplica sin que el usuario acepte (US17). Si Gemini falla o tarda más de `AI_TIMEOUT_MS`, la respuesta
 trae `aiAvailable: false` y solo quedan las reglas (US18).
 
+En el Workflow (`POST /api/ai/workflow/analyze`, prompt `workflow-v1`) la IA propone transiciones que faltan y roles
+(RF-17/RF-18) con las mismas garantías: valida ids, roles permitidos y que no repita transiciones ni lo que ya dicen
+las reglas. Las decisiones del Workflow todavía no se guardan porque el flujo aún no vive en la BD (US04).
+
 ## Evaluación (`npm run ai:eval`)
 
 `evals/designer.cases.js` tiene 12 formularios **sintéticos** de hallazgo. Cada uno indica qué elementos de un hallazgo
@@ -53,12 +57,14 @@ Revisado en el código el 2026-11-08.
 
 ### Qué sale hacia Gemini
 
-Solo la **estructura del formulario** y lo que ya detectaron las reglas (`buildDesignerPrompt` en
-`services/ai/prompts/designer.v1.js`, cubierto por la prueba "RNF-13" de `tests/ai.gemini.test.js`).
+Solo la **estructura del formulario o del flujo** y lo que ya detectaron las reglas (`buildDesignerPrompt` y
+`buildWorkflowPrompt` en `services/ai/prompts/`, cubiertos por las pruebas "RNF-13" de `tests/ai.gemini.test.js` y
+`tests/ai.workflow.test.js`).
 
 | Se envía | No se envía |
 | --- | --- |
-| Por campo: id, tipo, etiqueta, obligatorio, sección y fórmula | Hallazgos capturados, auditorías ni evidencias |
+| Designer, por campo: id, tipo, etiqueta, obligatorio, sección y fórmula | Hallazgos capturados, auditorías ni evidencias |
+| Workflow: estados (id, nombre, tipo) y transiciones (id, origen, destino, nombre, rol) | Posiciones del diagrama ni quién creó el flujo |
 | Por revisión de las reglas: título, id del campo y tipo de cambio | Nombre, correo ni rol de quien pide el análisis |
 | | El id del formulario (`appId`) ni datos de la sesión |
 
