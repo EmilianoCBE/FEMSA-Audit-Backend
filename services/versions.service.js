@@ -1,5 +1,5 @@
 // US11 - Rafael Valdez: guardar, consultar, publicar, descartar y restaurar versiones de una aplicación.
-import { findDesignerLayout, saveDesignerCanvas } from "../models/designer.model.js";
+import { findDesignerLayout, saveDesignerCanvas, saveDesignerWorkflow } from "../models/designer.model.js";
 import { versionsRepository } from "../repositories/versions.repository.js";
 import { badRequest, HttpError, notFoundError } from "../utils/httpErrors.js";
 import { hydrateDesignerLayout } from "./designer.service.js";
@@ -46,6 +46,17 @@ function canvasElements(elements) {
 }
 
 const sameCanvas = (a, b) => sameJson(canvasElements(a), canvasElements(b));
+
+/**
+ * Lo que el Designer tiene ahora (campos + flujo del proceso) frente a una configuración guardada.
+ * Una versión sin `workflow` equivale a "sin flujo guardado" (las anteriores a que existiera).
+ */
+const sameDesign = (layout, config) =>
+  sameCanvas(layout.elements, config?.elements) && sameJson(layout.workflow ?? null, config?.workflow ?? null);
+
+/** El config que manda el front con el flujo actual si no lo trae (p. ej. "Guardar borrador" solo manda campos). */
+const withCurrentWorkflow = (layout, config) =>
+  "workflow" in config || !layout.workflow ? config : { ...config, workflow: layout.workflow };
 
 export function canEditVersions(user) {
   const role = String(user?.role ?? "").toLowerCase();
@@ -133,13 +144,13 @@ export async function listVersions(appId, user) {
     versionsRepository.list(layout.id),
     versionsRepository.findLatest(layout.id),
   ]);
-  const matchesLatest = latest ? sameCanvas(layout.elements, latest.config?.elements) : false;
+  const matchesLatest = latest ? sameDesign(layout, latest.config) : false;
 
   return {
     versions: versions.map(toPublicVersion),
     designer: {
       versionId: matchesLatest ? String(latest.id) : null,
-      hasUnversionedChanges: latest ? !matchesLatest : layout.elements.length > 0,
+      hasUnversionedChanges: latest ? !matchesLatest : layout.elements.length > 0 || Boolean(layout.workflow),
     },
     canEdit: canEditVersions(user),
   };
@@ -153,7 +164,7 @@ export async function getVersion(appId, versionId) {
 /** Guarda la configuración como un nuevo borrador, salvo que sea idéntica a la versión más reciente. */
 export async function saveVersion(appId, { config, changes } = {}, author) {
   const layout = await findAppOrFail(appId);
-  const validConfig = validateConfig(config);
+  const validConfig = withCurrentWorkflow(layout, validateConfig(config));
   const validChanges = validateChanges(changes);
 
   const latest = await versionsRepository.findLatest(layout.id);
@@ -215,18 +226,18 @@ export async function restoreVersion(appId, versionId, author) {
   const layout = await findAppOrFail(appId);
   const source = await findVersionOrFail(layout.id, versionId);
   if (source.status === "discarded") throw conflict(`v${source.number} se descartó y no se puede restaurar.`);
-  if (sameCanvas(layout.elements, source.config?.elements)) {
+  if (sameDesign(layout, source.config)) {
     throw conflict(`El Designer ya tiene la configuración de v${source.number}.`);
   }
 
   const authorRef = { authorId: author.id, authorName: author.name };
   const latest = await versionsRepository.findLatest(layout.id);
   const backup =
-    latest && sameCanvas(layout.elements, latest.config?.elements)
+    latest && sameDesign(layout, latest.config)
       ? null
       : await versionsRepository.create({
           appId: layout.id,
-          config: { ...latest?.config, elements: layout.elements },
+          config: { ...latest?.config, elements: layout.elements, workflow: layout.workflow ?? undefined },
           changes: [`Estado del Designer antes de restaurar v${source.number}`],
           ...authorRef,
         });
@@ -239,6 +250,8 @@ export async function restoreVersion(appId, versionId, author) {
     restoredFromId: source.id,
   });
   if (Array.isArray(source.config?.elements)) saveDesignerCanvas(layout.id, source.config.elements);
+  // El flujo vuelve al de esa versión; si la versión no tenía flujo, el formulario queda sin flujo guardado.
+  saveDesignerWorkflow(layout.id, source.config?.workflow ?? null);
 
   return { version: toPublicVersion(version), backup: backup ? toPublicVersion(backup) : null };
 }

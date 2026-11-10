@@ -3,8 +3,10 @@ import {
   findDesignerLayout,
   listDesignerLayouts,
   saveDesignerCanvas,
+  saveDesignerWorkflow,
 } from "../models/designer.model.js";
 import { hydrateDesignerLayout } from "../services/designer.service.js";
+import { parseWorkflow } from "../services/workflow.schema.js";
 
 const allowedElementTypes = new Set(["short-text", "long-text", "catalog", "calculated", "date", "number", "section"]);
 
@@ -92,4 +94,19 @@ export function putDesignerCanvas(req, res) {
   if (!layout) return res.status(404).json({ message: "Layout no encontrado." });
 
   res.json({ layout });
+}
+
+// Fase 1 del workflow - Emiliano Carrizales: guarda el flujo del proceso del formulario (como el lienzo, en memoria).
+// Se vuelve permanente al guardar una versión: AppVersions.config.workflow (US11).
+export async function putDesignerWorkflow(req, res) {
+  await hydrateDesignerLayout(req.params.layoutId);
+  if (!findDesignerLayout(req.params.layoutId)) return res.status(404).json({ message: "Layout no encontrado." });
+
+  let workflow;
+  try {
+    workflow = parseWorkflow(req.body?.workflow);
+  } catch (error) {
+    return res.status(400).json({ message: error.message });
+  }
+  res.json({ layout: saveDesignerWorkflow(req.params.layoutId, workflow) });
 }

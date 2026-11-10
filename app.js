@@ -37,6 +37,8 @@ app.use(
 
 // US11: las versiones guardan la configuración completa de la aplicación, por eso aceptan cuerpos más grandes.
 app.use("/api/apps", express.json({ limit: "256kb" }));
+// El lienzo y el flujo del proceso pueden pasar del límite general.
+app.use("/api/designer", express.json({ limit: "256kb" }));
 app.use(express.json({ limit: "16kb" }));
 
 app.use("/api/auth", authRoutes);

@@ -10,13 +10,24 @@ import { validateAppId } from "../versions.service.js";
 import { aiStatus, checkAiStatus, recordFailure, recordSuccess } from "./availability.js";
 import { getAiProvider } from "./providers/index.js";
 import { runDesignerRules } from "./rules/designer.rules.js";
-import { changeSchema, providerResponseSchema, SECTIONS, suggestionSchema } from "./schemas.js";
+import {
+  changeSchema,
+  providerResponseSchema,
+  SECTIONS,
+  suggestionSchema,
+  workflowAppliedChangeSchema,
+} from "./schemas.js";
 
 const DEFAULT_TIMEOUT_MS = 8000;
 
-/** SQL Server 208 = "Invalid object name": falta la tabla porque no se corrió la migración. */
-const isMissingTable = (error) => error?.number === 208 || /Invalid object name/i.test(error?.message ?? "");
-const MISSING_TABLE_MESSAGE = "Falta la tabla dbo.AppAiRecommendations: ejecuta npm run ai:migrate.";
+/**
+ * SQL Server 208 = "Invalid object name" (falta la tabla) y 207 = "Invalid column name" (falta la migración 006):
+ * no se corrió `npm run ai:migrate`.
+ */
+export const isMissingTable = (error) =>
+  [207, 208, 50206].includes(error?.number) || /Invalid (object|column) name/i.test(error?.message ?? "");
+export const MISSING_TABLE_MESSAGE =
+  "Faltan las tablas del asistente (dbo.AppAiRecommendations o la migración 006): ejecuta npm run ai:migrate.";
 
 /** Igual que el Designer (FieldsPanel): sin sección guardada, los 3 primeros campos son de identificación, los 3
  * siguientes de evaluación y el resto de remediación. */
@@ -35,7 +46,7 @@ export function toDesignerFields(elements = []) {
 }
 
 /** Corre la llamada al proveedor con límite de tiempo; al vencer, también cancela la petición (AbortSignal). */
-function withTimeout(run, timeoutMs) {
+export function withTimeout(run, timeoutMs) {
   const controller = new AbortController();
   let timer;
   const timeout = new Promise((_, reject) => {
@@ -161,9 +172,19 @@ export async function analyzeDesigner(
   };
 }
 
-function toPublicSuggestion(recommendation) {
-  const { id, source, kind, title, reason, confidence, fieldId, change } = recommendation;
-  return { id, source, kind, title, reason, confidence, ...(fieldId && { fieldId }), ...(change && { change }) };
+export function toPublicSuggestion(recommendation) {
+  const { id, source, kind, title, reason, confidence, fieldId, target, change } = recommendation;
+  return {
+    id,
+    source,
+    kind,
+    title,
+    reason,
+    confidence,
+    ...(fieldId && { fieldId }),
+    ...(target && { target }),
+    ...(change && { change }),
+  };
 }
 
 const DECISIONS = ["accepted", "rejected", "replaced"];
@@ -176,11 +197,8 @@ export async function decideRecommendation(idInput, body, user) {
   const decision = body?.decision;
   if (!DECISIONS.includes(decision)) throw badRequest(`decision debe ser ${DECISIONS.join(", ")}.`);
 
-  let appliedChange = null;
-  if (decision === "replaced") {
-    const parsed = changeSchema.safeParse(body?.change);
-    if (!parsed.success) throw badRequest("Para reemplazar se requiere el cambio que aplicó el usuario (change).");
-    appliedChange = parsed.data;
+  if (decision === "replaced" && !body?.change) {
+    throw badRequest("Para reemplazar se requiere el cambio que aplicó el usuario (change).");
   }
 
   let existing;
@@ -191,6 +209,15 @@ export async function decideRecommendation(idInput, body, user) {
     throw error;
   }
   if (!existing) throw notFoundError("No existe esa sugerencia.");
+
+  // El cambio reemplazado se valida con las operaciones de la pantalla de donde salió la sugerencia.
+  let appliedChange = null;
+  if (decision === "replaced") {
+    const schema = existing.scope === "workflow" ? workflowAppliedChangeSchema : changeSchema;
+    const parsed = schema.safeParse(body.change);
+    if (!parsed.success) throw badRequest("Para reemplazar se requiere el cambio que aplicó el usuario (change).");
+    appliedChange = parsed.data;
+  }
   if (decision !== "rejected" && !existing.change) {
     throw badRequest("Esta sugerencia no trae un cambio que se pueda aplicar; solo se puede rechazar.");
   }
@@ -207,11 +234,14 @@ export async function decideRecommendation(idInput, body, user) {
 const emptyCounts = () => ({ total: 0, pending: 0, accepted: 0, rejected: 0, replaced: 0 });
 
 /** Métricas del asistente para un formulario: aceptación por origen (reglas / IA) y latencia promedio de la IA. */
-export async function getDesignerMetrics(appIdInput) {
+export const getDesignerMetrics = (appIdInput) => getAssistantMetrics(appIdInput, "designer");
+
+/** Mismas métricas para el Designer o para el flujo del formulario (fase 3 del workflow). */
+export async function getAssistantMetrics(appIdInput, scope) {
   const appId = validateAppId(appIdInput);
   let rows;
   try {
-    rows = await aiRecommendationsRepository.metrics(appId);
+    rows = await aiRecommendationsRepository.metrics(appId, scope);
   } catch (error) {
     if (isMissingTable(error)) throw new HttpError(503, MISSING_TABLE_MESSAGE);
     throw error;

@@ -1,6 +1,8 @@
 // US15 - Emiliano Carrizales: proveedor real con Gemini (Google AI Studio).
 // La llave vive solo en el backend (.env); el navegador nunca la ve.
 import { GoogleGenAI } from "@google/genai";
+import * as generatePrompt from "../prompts/workflow-generate.v1.js";
+import * as workflowPrompt from "../prompts/workflow.v1.js";
 import {
   buildDesignerPrompt,
   PROMPT_VERSION,
@@ -23,6 +25,46 @@ export function createGeminiProvider({ apiKey, model = DEFAULT_GEMINI_MODEL, cli
     /** US18: consulta ligera que valida llave y modelo sin generar texto (no consume tokens). */
     async checkHealth({ signal } = {}) {
       await ai.models.get({ model, config: { abortSignal: signal } });
+    },
+
+    /** US15 RF-17/RF-18: transiciones y roles sugeridos para el flujo. */
+    workflowPromptVersion: workflowPrompt.PROMPT_VERSION,
+    async suggestWorkflow({ states, transitions, known }, { signal } = {}) {
+      const response = await ai.models.generateContent({
+        model,
+        contents: workflowPrompt.buildWorkflowPrompt({ states, transitions, known }),
+        config: {
+          systemInstruction: workflowPrompt.SYSTEM_INSTRUCTION,
+          temperature: 0.2,
+          maxOutputTokens: 2048,
+          responseMimeType: "application/json",
+          responseJsonSchema: workflowPrompt.RESPONSE_JSON_SCHEMA,
+          abortSignal: signal,
+        },
+      });
+      const text = response.text;
+      if (!text) throw new Error("Gemini respondió sin contenido.");
+      return JSON.parse(text);
+    },
+
+    /** RF-17: flujo completo propuesto a partir de una descripción. */
+    generatePromptVersion: generatePrompt.PROMPT_VERSION,
+    async generateWorkflow({ description }, { signal } = {}) {
+      const response = await ai.models.generateContent({
+        model,
+        contents: generatePrompt.buildGeneratePrompt({ description }),
+        config: {
+          systemInstruction: generatePrompt.SYSTEM_INSTRUCTION,
+          temperature: 0.2,
+          maxOutputTokens: 4096,
+          responseMimeType: "application/json",
+          responseJsonSchema: generatePrompt.RESPONSE_JSON_SCHEMA,
+          abortSignal: signal,
+        },
+      });
+      const text = response.text;
+      if (!text) throw new Error("Gemini respondió sin contenido.");
+      return JSON.parse(text);
     },
 
     async suggestDesigner({ fields, known }, { signal } = {}) {
