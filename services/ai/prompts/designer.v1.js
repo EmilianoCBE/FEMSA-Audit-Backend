@@ -2,7 +2,8 @@
 // Si cambias el texto, crea designer.v2.js y compara con `npm run ai:eval` antes de reemplazarlo.
 import { FIELD_TYPES, SECTIONS } from "../schemas.js";
 
-export const PROMPT_VERSION = "designer-v1";
+// v1.1: aclara que el tipo "section" es el campo Adjunto.
+export const PROMPT_VERSION = "designer-v1.1";
 
 export const SYSTEM_INSTRUCTION = `Eres el asistente de diseño del App Builder de auditoría interna de FEMSA.
 Revisas formularios con los que los auditores capturan hallazgos (identificación, evaluación y remediación) y propones
@@ -22,7 +23,7 @@ Reglas:
   - add-field (type, label, section): agregar un campo nuevo.
 - Si "kind" es "field" o "component", incluye siempre "change"; sin "change" la sugerencia no se puede aplicar.
 - "fieldId" debe ser exactamente uno de los ids que recibes. Nunca inventes ids. En add-field no envíes "fieldId".
-- Tipos permitidos: ${FIELD_TYPES.join(", ")}. Secciones: ${SECTIONS.join(", ")}.
+- Tipos permitidos: ${FIELD_TYPES.join(", ")} ("section" es un campo de archivos adjuntos). Secciones: ${SECTIONS.join(", ")}.
 - "known" son revisiones automáticas que el usuario ya está viendo. No propongas nada sobre los campos que aparecen
   ahí (ni el mismo cambio ni otro distinto); concéntrate en lo que falta.
 - Un hallazgo de auditoría completo necesita: fecha de detección, área o unidad auditada, criterio incumplido, causa,

@@ -45,7 +45,7 @@ Para acceso exclusivo con Entra, crea una fila con Username, Email, Name y Entra
 | GET | `/api/auth/me` | Devuelve usuario autenticado o 401 |
 | POST | `/api/auth/logout` | Revoca sesión y elimina cookie |
 
-Las rutas del frontend requieren sesión. Para nuevas rutas de datos de la API, usa `requireAuth` de `middlewares/auth.js`; ping y health siguen públicos. Los permisos por rol de las funcionalidades existentes no están implementados por este login.
+Las rutas del frontend requieren sesión. Para nuevas rutas de datos de la API, usa `requireAuth` de `middlewares/auth.js`; ping y health siguen públicos. Los permisos predeterminados por rol se configuran con la migración y los endpoints descritos en [PERMISSIONS.md](PERMISSIONS.md). Las rutas de App Builder y Riesgos requieren además autorización del módulo.
 
 En producción configura `NODE_ENV=production`, HTTPS, `WEB_ORIGIN` y el redirect real; publica la web y `/api` bajo el mismo sitio. El limitador de intentos usa memoria por proceso (20 intentos cada 15 minutos por IP); para múltiples instancias se necesita un almacén compartido. Configura `trust proxy` según tu infraestructura antes de usar un proxy inverso.
 

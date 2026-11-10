@@ -38,6 +38,13 @@ const COMPONENT_HINTS = [
 
 const TEXT_TYPES = new Set(["short-text", "long-text"]);
 
+/** Las tres secciones fijas del formulario de hallazgo, en el orden en que el Designer las muestra. */
+const SECTION_NAMES = {
+  identificacion: "Identificación",
+  evaluacion: "Evaluación",
+  remediacion: "Remediación",
+};
+
 export function normalize(value) {
   return String(value ?? "")
     .normalize("NFD")
@@ -51,7 +58,7 @@ const display = (field) => field.label?.trim() || field.id;
 
 export function genericLabelRule(fields) {
   return fields
-    .filter((field) => field.type !== "section" && (!field.label?.trim() || GENERIC_LABELS.has(normalize(field.label))))
+    .filter((field) => !field.label?.trim() || GENERIC_LABELS.has(normalize(field.label)))
     .map((field) => ({
       kind: "inconsistency",
       title: field.label?.trim()
@@ -70,7 +77,7 @@ export function duplicateLabelRule(fields) {
   const suggestions = [];
   for (const field of fields) {
     const key = normalize(field.label);
-    if (!key || field.type === "section") continue;
+    if (!key) continue;
     if (seen.has(key)) {
       suggestions.push({
         kind: "inconsistency",
@@ -123,7 +130,29 @@ export function componentHintRule(fields) {
   return suggestions;
 }
 
-export const DESIGNER_RULES = [genericLabelRule, duplicateLabelRule, calculatedWithoutFormulaRule, componentHintRule];
+/** Una sección sin campos deja al auditor sin dónde capturar esa etapa del hallazgo. Un formulario vacío no aplica. */
+export function emptySectionRule(fields) {
+  if (fields.length === 0) return [];
+  const used = new Set(fields.map((field) => field.section));
+  return Object.entries(SECTION_NAMES)
+    .filter(([id]) => !used.has(id))
+    .map(([id, name]) => ({
+      kind: "inconsistency",
+      title: `La sección ${name} no tiene campos`,
+      reason:
+        `El hallazgo se captura por etapas y ${name} quedaría vacía: el auditor no podrá registrar esa parte y los ` +
+        "reportes mostrarán la sección sin datos. Agrega al menos un campo o mueve uno existente a esa sección.",
+      confidence: "alta",
+    }));
+}
+
+export const DESIGNER_RULES = [
+  genericLabelRule,
+  duplicateLabelRule,
+  calculatedWithoutFormulaRule,
+  emptySectionRule,
+  componentHintRule,
+];
 
 export function runDesignerRules(fields) {
   return DESIGNER_RULES.flatMap((rule) => rule(fields));

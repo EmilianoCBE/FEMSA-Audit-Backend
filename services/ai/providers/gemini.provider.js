@@ -20,6 +20,11 @@ export function createGeminiProvider({ apiKey, model = DEFAULT_GEMINI_MODEL, cli
     model,
     promptVersion: PROMPT_VERSION,
 
+    /** US18: consulta ligera que valida llave y modelo sin generar texto (no consume tokens). */
+    async checkHealth({ signal } = {}) {
+      await ai.models.get({ model, config: { abortSignal: signal } });
+    },
+
     async suggestDesigner({ fields, known }, { signal } = {}) {
       const response = await ai.models.generateContent({
         model,

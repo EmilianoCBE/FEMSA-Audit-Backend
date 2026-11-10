@@ -7,9 +7,10 @@ import { aiRecommendationsRepository } from "../../repositories/aiRecommendation
 import { badRequest, HttpError, notFoundError } from "../../utils/httpErrors.js";
 import { hydrateDesignerLayout } from "../designer.service.js";
 import { validateAppId } from "../versions.service.js";
+import { aiStatus, checkAiStatus, recordFailure, recordSuccess } from "./availability.js";
 import { getAiProvider } from "./providers/index.js";
 import { runDesignerRules } from "./rules/designer.rules.js";
-import { changeSchema, providerResponseSchema, suggestionSchema } from "./schemas.js";
+import { changeSchema, providerResponseSchema, SECTIONS, suggestionSchema } from "./schemas.js";
 
 const DEFAULT_TIMEOUT_MS = 8000;
 
@@ -17,14 +18,18 @@ const DEFAULT_TIMEOUT_MS = 8000;
 const isMissingTable = (error) => error?.number === 208 || /Invalid object name/i.test(error?.message ?? "");
 const MISSING_TABLE_MESSAGE = "Falta la tabla dbo.AppAiRecommendations: ejecuta npm run ai:migrate.";
 
+/** Igual que el Designer (FieldsPanel): sin sección guardada, los 3 primeros campos son de identificación, los 3
+ * siguientes de evaluación y el resto de remediación. */
+const inferSection = (index) => (index < 3 ? "identificacion" : index < 6 ? "evaluacion" : "remediacion");
+
 /** Solo la estructura del formulario: es lo único que sale hacia el proveedor de IA (RNF-13). */
 export function toDesignerFields(elements = []) {
-  return elements.map((element) => ({
+  return elements.map((element, index) => ({
     id: String(element.id),
     type: element.type,
     label: typeof element.config?.label === "string" ? element.config.label : "",
     required: element.config?.required === true,
-    section: element.config?.section ?? null,
+    section: SECTIONS.includes(element.config?.section) ? element.config.section : inferSection(index),
     formula: typeof element.config?.formula === "string" ? element.config.formula : null,
   }));
 }
@@ -36,7 +41,7 @@ function withTimeout(run, timeoutMs) {
   const timeout = new Promise((_, reject) => {
     timer = setTimeout(() => {
       controller.abort();
-      reject(new Error(`La IA no respondió en ${timeoutMs} ms.`));
+      reject(Object.assign(new Error(`La IA no respondió en ${timeoutMs} ms.`), { code: "AI_TIMEOUT" }));
     }, timeoutMs);
   });
   return Promise.race([run(controller.signal), timeout]).finally(() => clearTimeout(timer));
@@ -86,20 +91,30 @@ export async function analyzeDesigner(
 
   const started = Date.now();
   let aiSuggestions = [];
-  let aiAvailable = true;
-  try {
-    aiSuggestions = await withTimeout(async (signal) => {
-      // Si una respuesta no deja ninguna sugerencia válida y queda tiempo, se pide una vez más.
-      let valid = [];
-      for (let attempt = 0; attempt < 2; attempt++) {
-        const raw = await provider.suggestDesigner({ fields, known: ruleSuggestions }, { signal });
-        valid = validateAiSuggestions(raw, fields, ruleSuggestions);
-        if (valid.length > 0 || Date.now() - started > timeoutMs / 2) break;
-      }
-      return valid;
-    }, timeoutMs);
-  } catch {
-    aiAvailable = false;
+  // US18: si no está configurada o falló hace poco, ni se llama: responden las reglas al instante.
+  const status = aiStatus(provider);
+  let aiAvailable = status.aiAvailable;
+  let aiUnavailableReason = status.reason;
+  let aiRetryAt = status.retryAt;
+  if (aiAvailable) {
+    try {
+      aiSuggestions = await withTimeout(async (signal) => {
+        // Si una respuesta no deja ninguna sugerencia válida y queda tiempo, se pide una vez más.
+        let valid = [];
+        for (let attempt = 0; attempt < 2; attempt++) {
+          const raw = await provider.suggestDesigner({ fields, known: ruleSuggestions }, { signal });
+          valid = validateAiSuggestions(raw, fields, ruleSuggestions);
+          if (valid.length > 0 || Date.now() - started > timeoutMs / 2) break;
+        }
+        return valid;
+      }, timeoutMs);
+      recordSuccess(provider);
+    } catch (error) {
+      aiAvailable = false;
+      aiUnavailableReason = error?.code === "AI_TIMEOUT" ? "timeout" : "error";
+      recordFailure(provider, aiUnavailableReason);
+      aiRetryAt = aiStatus(provider).retryAt;
+    }
   }
 
   const latencyMs = Date.now() - started;
@@ -136,6 +151,8 @@ export async function analyzeDesigner(
   return {
     appId,
     aiAvailable,
+    aiUnavailableReason,
+    aiRetryAt,
     recorded,
     provider: provider.name,
     promptVersion: provider.promptVersion,
@@ -221,4 +238,10 @@ export async function getDesignerMetrics(appIdInput) {
     acceptanceRate: { rules: acceptanceRate(bySource.rules), ai: acceptanceRate(bySource.ai) },
     avgAiLatencyMs: aiLatency,
   };
+}
+
+/** US18: estado de la IA para avisar antes de analizar (comprobación ligera, como mucho una vez por minuto). */
+export async function getAiStatus({ provider = getAiProvider(), ...options } = {}) {
+  const { aiAvailable, reason, retryAt } = await checkAiStatus(provider, options);
+  return { aiAvailable, reason, retryAt, provider: provider.name };
 }

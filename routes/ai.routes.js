@@ -1,5 +1,6 @@
 import { Router } from "express";
 import {
+  getAiStatusController,
   getDesignerMetricsController,
   postAnalyzeDesigner,
   postRecommendationDecision,
@@ -12,6 +13,9 @@ router.use((req, res, next) => {
   res.set("Cache-Control", "no-store");
   next();
 });
+
+/** US18: si la IA está disponible (comprobación ligera, sin generar texto), para avisar antes de analizar. */
+router.get("/status", requireAuth, getAiStatusController);
 
 /** US15-US17: analiza un formulario del Designer y devuelve propuestas; no cambia nada. */
 router.post("/designer/analyze", requireAuth, sameOrigin, postAnalyzeDesigner);
