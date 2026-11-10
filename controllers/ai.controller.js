@@ -1,5 +1,6 @@
 // US15-US17 - Emiliano Carrizales: asistente de diseño (solo HTTP; la lógica está en services/ai).
 import { analyzeDesigner, decideRecommendation, getAiStatus, getDesignerMetrics } from "../services/ai/ai.service.js";
+import { analyzeWorkflowAi } from "../services/ai/workflow.service.js";
 
 export const postAnalyzeDesigner = async (req, res) =>
   res.json(await analyzeDesigner(req.body?.appId, { user: req.user }));
@@ -10,3 +11,5 @@ export const postRecommendationDecision = async (req, res) =>
 export const getDesignerMetricsController = async (req, res) => res.json(await getDesignerMetrics(req.query.appId));
 
 export const getAiStatusController = async (_req, res) => res.json(await getAiStatus());
+
+export const postAnalyzeWorkflow = async (req, res) => res.json(await analyzeWorkflowAi(req.body));

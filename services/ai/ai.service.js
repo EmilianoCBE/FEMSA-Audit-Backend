@@ -35,7 +35,7 @@ export function toDesignerFields(elements = []) {
 }
 
 /** Corre la llamada al proveedor con límite de tiempo; al vencer, también cancela la petición (AbortSignal). */
-function withTimeout(run, timeoutMs) {
+export function withTimeout(run, timeoutMs) {
   const controller = new AbortController();
   let timer;
   const timeout = new Promise((_, reject) => {
