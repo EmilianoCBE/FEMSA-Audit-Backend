@@ -88,6 +88,7 @@ tests/            → pruebas con node --test
 | GET | `/api/designer/layouts/:layoutId` | US03 Magda: obtiene un layout con sus elementos del canvas |
 | POST | `/api/designer/layouts` | US03 Magda: crea un layout/módulo visual configurable |
 | PUT | `/api/designer/layouts/:layoutId/canvas` | US03 Magda: guarda posiciones y configuración después del drag & drop |
+| PUT | `/api/designer/layouts/:layoutId/workflow` | Workflow (fases 1 y 2): guarda `{ workflow }`, el flujo del proceso del formulario (estados con plazo opcional `slaDays`, transiciones con rol y requisitos `requires: { evidence, comment, actionPlan }`). Viaja con el layout y entra en `AppVersions.config.workflow` al guardar una versión, así que se versiona, compara y restaura con los campos |
 | GET | `/api/apps/:appId/versions` | US11 Rafael: `{ versions, designer, canEdit }`: historial sin la configuración ni los borradores descartados; `designer` dice qué versión coincide con el lienzo y si tiene cambios sin versión |
 | GET | `/api/apps/:appId/versions/:versionId` | US11 Rafael: detalle de una versión con su `config` completa |
 | POST | `/api/apps/:appId/versions` | US11 Rafael: guarda `{ config, changes[] }` como nuevo borrador (`v1`, `v2`, …); 409 si es idéntica a la más reciente |
@@ -97,6 +98,15 @@ tests/            → pruebas con node --test
 | POST | `/api/ai/designer/analyze` | US15–US17 Emiliano: recibe `{ appId }` y devuelve sugerencias explicadas (reglas + IA) para un formulario del Designer; no cambia nada |
 | POST | `/api/ai/recommendations/:id/decision` | US17 Emiliano: registra `{ decision: "accepted" \| "rejected" \| "replaced", change? }`; una sola vez por sugerencia (409) |
 | GET | `/api/ai/designer/metrics?appId=` | US17 Emiliano: aceptación por origen (reglas / IA) y latencia promedio de la IA |
+| POST | `/api/ai/workflow/analyze` | US15 (RF-18): recibe `{ appId?, states, transitions, known }` del flujo y devuelve transiciones y roles sugeridos por la IA, validados. Con `appId` los registra (`recorded: true`) para medir las decisiones |
+| POST | `/api/ai/workflow/generate` | RF-17 (fase 3 del workflow): recibe `{ description }` y propone un flujo completo (`workflow: { summary, states, transitions }` o `null`). Quita correos y teléfonos antes de enviar; no guarda ni aplica nada |
+| POST | `/api/ai/workflow/decisions` | Fase 3 del workflow: registra la decisión sobre una revisión de las reglas del flujo `{ appId, suggestion, decision, change? }` (201). Las de la IA se deciden con `/api/ai/recommendations/:id/decision` |
+| GET | `/api/ai/workflow/metrics?appId=` | Fase 3 del workflow: aceptación por origen (reglas / IA) del asistente del flujo, separada de la del Designer |
+| GET | `/api/workflow/instances?appId=&status=` | Workflow fase 4: procesos (hallazgos) de un formulario con su estado, versión anclada y plazo |
+| POST | `/api/workflow/instances` | Fase 4: inicia un proceso `{ appId, title }` con la versión **publicada**; queda anclado a ella y termina con ese flujo aunque se publique otra (201) |
+| GET | `/api/workflow/instances/:id` | Fase 4: detalle con el flujo de su versión, las acciones que el usuario puede ejecutar e historial |
+| POST | `/api/workflow/instances/:id/transitions` | Fase 4: `{ transitionId, comment?, evidence?, actionPlan? }`; valida versión, estado actual, rol del flujo, segregación de funciones y requisitos |
+| GET | `/api/workflow/instances/summary?appId=` | Fase 4: procesos en curso por versión (aviso al publicar) |
 | GET | `/api/ai/status` | US18: `{ aiAvailable, reason, retryAt, provider }` sin llamar a la IA. `reason`: `not-configured` o `paused` (falló hace poco). El análisis también trae `aiUnavailableReason` (`timeout`, `error`, …) y `aiRetryAt` |
 
 Los errores responden `{ "msg": "..." }` con su código HTTP.
@@ -114,7 +124,11 @@ servicio externo. Las reglas de inconsistencias siempre responden; si el proveed
 la respuesta trae `aiAvailable: false` y solo las reglas (US18). Tras una falla no se vuelve a llamar a la IA durante
 `AI_RETRY_AFTER_MS` (60 s por defecto): los análisis responden al instante y la pausa vive en memoria de cada instancia.
 Las sugerencias y las decisiones se guardan en `dbo.AppAiRecommendations`: créala con `npm run ai:migrate` (requiere
-`npm run auth:migrate`). Si la tabla no existe o la BD falla, el análisis responde igual con `recorded: false`.
+`npm run auth:migrate`). El mismo comando aplica la migración 006 (columnas `Scope` y `Target` para el asistente del
+Workflow; las filas existentes quedan como Designer). Si la tabla no existe o la BD falla, el análisis responde igual
+con `recorded: false`.
+Los procesos del workflow (fase 4) usan `dbo.AppWorkflowInstances` y `dbo.AppWorkflowHistory`: créalas con
+`npm run workflow:migrate`. Sin ellas, `/api/workflow` responde 503 con la instrucción.
 Para usar Gemini: `AI_PROVIDER=gemini` y `GEMINI_API_KEY` en `.env`; verifica con `npm run ai:check`. La evaluación
 (`npm run ai:eval`) y la revisión de privacidad están en [AI.md](AI.md).
 

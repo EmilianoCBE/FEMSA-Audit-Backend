@@ -176,3 +176,24 @@ test("US18 GET /ai/status pide sesión e informa sin llamar a la IA", async () =
   assert.equal(response.headers.get("cache-control"), "no-store");
   assert.deepEqual(await response.json(), { aiAvailable: true, reason: null, retryAt: null, provider: "mock" });
 });
+
+test("US15 POST /ai/workflow/analyze pide sesión, mismo origen y un flujo válido", async () => {
+  const body = {
+    states: [
+      { id: "a", name: "Revisión", kind: "En proceso" },
+      { id: "b", name: "Aprobación", kind: "Aprobación" },
+    ],
+    transitions: [{ id: "ab", from: "a", to: "b", label: "revisar", role: "Auditor" }],
+  };
+  const post = (payload, extra = headers) =>
+    fetch(`${origin}/ai/workflow/analyze`, { method: "POST", headers: extra, body: JSON.stringify(payload) });
+  assert.equal((await post(body, { "Content-Type": "application/json" })).status, 401);
+  assert.equal((await post(body, { ...headers, Origin: "https://otro.example" })).status, 403);
+  assert.equal((await post({ states: "x" })).status, 400);
+  const response = await post(body);
+  assert.equal(response.status, 200);
+  const result = await response.json();
+  assert.equal(result.aiAvailable, true);
+  assert.equal(result.suggestions[0].change.from, "b");
+  assert.equal(result.suggestions[0].change.to, "a");
+});
