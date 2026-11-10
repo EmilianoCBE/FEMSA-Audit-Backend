@@ -39,4 +39,31 @@ export const mockProvider = {
 
     return { suggestions };
   },
+
+  workflowPromptVersion: "mock-workflow-v1",
+
+  /** Si una aprobación no tiene cómo regresar a revisión, propone "devolver" (determinista para pruebas y demo). */
+  async suggestWorkflow({ states, transitions }) {
+    const suggestions = [];
+    const review = states.find((state) => state.kind === "En proceso");
+    const returns = new Set(
+      states.filter((state) => state.kind === "Retorno" || state.kind === "En proceso").map((s) => s.id),
+    );
+    for (const state of states.filter((candidate) => candidate.kind === "Aprobación")) {
+      const canReturn = transitions.some((transition) => transition.from === state.id && returns.has(transition.to));
+      if (review && !canReturn) {
+        suggestions.push({
+          kind: "relation",
+          title: `Permitir devolver a revisión desde «${state.name}»`,
+          reason:
+            "Si quien valida encuentra un problema, hoy solo puede aprobar. Una transición para devolver el hallazgo a " +
+            "revisión evita aprobar algo incompleto.",
+          confidence: "media",
+          target: { type: "state", id: state.id },
+          change: { op: "add-transition", from: state.id, to: review.id, label: "devolver", role: "Jefe de Auditoría" },
+        });
+      }
+    }
+    return { suggestions: suggestions.slice(0, 5) };
+  },
 };

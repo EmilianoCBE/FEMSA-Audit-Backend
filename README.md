@@ -98,6 +98,7 @@ tests/            → pruebas con node --test
 | POST | `/api/ai/designer/analyze` | US15–US17 Emiliano: recibe `{ appId }` y devuelve sugerencias explicadas (reglas + IA) para un formulario del Designer; no cambia nada |
 | POST | `/api/ai/recommendations/:id/decision` | US17 Emiliano: registra `{ decision: "accepted" \| "rejected" \| "replaced", change? }`; una sola vez por sugerencia (409) |
 | GET | `/api/ai/designer/metrics?appId=` | US17 Emiliano: aceptación por origen (reglas / IA) y latencia promedio de la IA |
+| POST | `/api/ai/workflow/analyze` | US15 (RF-17/RF-18): recibe `{ states, transitions, known }` del flujo y devuelve transiciones y roles sugeridos por la IA, validados; no guarda nada |
 | GET | `/api/ai/status` | US18: `{ aiAvailable, reason, retryAt, provider }` sin llamar a la IA. `reason`: `not-configured` o `paused` (falló hace poco). El análisis también trae `aiUnavailableReason` (`timeout`, `error`, …) y `aiRetryAt` |
 
 Los errores responden `{ "msg": "..." }` con su código HTTP.
