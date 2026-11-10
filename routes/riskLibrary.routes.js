@@ -5,12 +5,10 @@ import {
   getRiskLibraryController,
   getRiskLibraryByIdController,
   getRiskLibraryRegisterDetailsController,
+  getRiskLibraryRisksController,
 } from '../controllers/riskLibrary.controller.js';
 
-import {
-  requireAuth,
-  sameOrigin,
-} from '../middlewares/auth.js';
+import { requireAuth } from '../middlewares/auth.js';
 
 const router = Router();
 
@@ -26,9 +24,15 @@ router.get(
 );
 
 router.get(
-  '/:id/register',
+  '/:id/register/details',
   requireAuth,
   getRiskLibraryRegisterDetailsController
+);
+
+router.get(
+  '/:id/register',
+  requireAuth,
+  getRiskLibraryRisksController
 );
 
 router.get(
@@ -38,3 +42,4 @@ router.get(
 );
 
 export default router;
+

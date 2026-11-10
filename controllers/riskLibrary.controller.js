@@ -3,6 +3,7 @@ import {
   findRiskLibrary,
   findRiskLibraryById,
   findRiskLibraryRegisterDetails,
+  findRiskLibraryRisks,
 } from '../models/riskLibrary.model.js';
 
 export async function getRiskLibraryController(req, res) {
@@ -50,6 +51,19 @@ export async function getRiskLibraryRegisterDetailsController(req, res, next) {
         audit_department: records[0].audit_department,
       },
       records,
+    });
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function getRiskLibraryRisksController(req, res, next) {
+  try {
+    const risks = await findRiskLibraryRisks(req.params.id);
+
+    return res.status(200).json({
+      count: risks.length,
+      risks,
     });
   } catch (error) {
     next(error);
