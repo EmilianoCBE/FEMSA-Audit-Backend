@@ -43,6 +43,8 @@ const id = text(60);
 
 /** Lo único que llega del front y sale hacia la IA: estructura del flujo (RNF-13). */
 export const workflowInputSchema = z.object({
+  /** Fase 3: formulario al que pertenece el flujo, para registrar las sugerencias y sus decisiones. */
+  appId: text(100).optional(),
   states: z
     .array(z.object({ id, name: text(80), kind: text(30) }))
     .min(1)
@@ -74,12 +76,84 @@ export const workflowChangeSchema = z.discriminatedUnion("op", [
   }),
 ]);
 
+/** Requisitos que se pueden exigir en una transición (los mismos que guarda el flujo). */
+export const WORKFLOW_REQUIREMENTS = ["evidence", "comment", "actionPlan"];
+
+/**
+ * Cambios que las reglas del front (US16) pueden proponer y el usuario aplicar o reemplazar. Incluye los de la IA
+ * más quitar una transición repetida y exigir un requisito.
+ */
+export const workflowAppliedChangeSchema = z.discriminatedUnion("op", [
+  ...workflowChangeSchema.options,
+  z.object({ op: z.literal("remove-transition"), transitionId: id }),
+  z.object({
+    op: z.literal("set-transition-requirement"),
+    transitionId: id,
+    requirement: z.enum(WORKFLOW_REQUIREMENTS),
+    value: z.boolean(),
+  }),
+]);
+
+const workflowTarget = z.object({ type: z.enum(["state", "transition"]), id });
+
+/** Fase 3: sugerencia de las reglas del flujo que el usuario decidió (se guarda ya decidida). */
+export const workflowRuleDecisionSchema = z.object({
+  appId: text(100),
+  suggestion: z.object({
+    rule: text(40),
+    title: text(160),
+    reason: text(600),
+    target: workflowTarget.nullable().optional(),
+    change: workflowAppliedChangeSchema.optional(),
+  }),
+  decision: z.enum(["accepted", "rejected", "replaced"]),
+  change: workflowAppliedChangeSchema.optional(),
+});
+
+/* ---------- Generar un flujo desde una descripción (RF-17) ---------- */
+
+/** Tipos de estado que entiende el editor del flujo. */
+export const WORKFLOW_STATE_KINDS = ["Inicial", "En proceso", "Aprobación", "Retorno", "Final"];
+
+export const generateWorkflowInputSchema = z.object({
+  description: z.string().trim().min(15).max(1000),
+});
+
+/** Lo que debe regresar el proveedor al generar un flujo; las reglas de estructura se revisan aparte. */
+export const generatedWorkflowSchema = z.object({
+  summary: text(300),
+  states: z
+    .array(
+      z.object({
+        id: z
+          .string()
+          .trim()
+          .regex(/^[a-z0-9-]{1,40}$/),
+        name: text(60),
+        kind: z.enum(WORKFLOW_STATE_KINDS),
+      }),
+    )
+    .min(3)
+    .max(15),
+  transitions: z
+    .array(
+      z.object({
+        from: id,
+        to: id,
+        label: text(40),
+        role: z.enum(WORKFLOW_ROLES),
+      }),
+    )
+    .min(2)
+    .max(30),
+});
+
 export const workflowSuggestionSchema = z.object({
   /** relation = transición nueva, role = rol para una transición, inconsistency = observación sin cambio. */
   kind: z.enum(["relation", "role", "inconsistency"]),
   title: text(160),
   reason: text(600),
   confidence: z.enum(["alta", "media", "baja"]),
-  target: z.object({ type: z.enum(["state", "transition"]), id }).optional(),
+  target: workflowTarget.optional(),
   change: workflowChangeSchema.optional(),
 });

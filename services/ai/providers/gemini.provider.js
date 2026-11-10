@@ -1,6 +1,7 @@
 // US15 - Emiliano Carrizales: proveedor real con Gemini (Google AI Studio).
 // La llave vive solo en el backend (.env); el navegador nunca la ve.
 import { GoogleGenAI } from "@google/genai";
+import * as generatePrompt from "../prompts/workflow-generate.v1.js";
 import * as workflowPrompt from "../prompts/workflow.v1.js";
 import {
   buildDesignerPrompt,
@@ -38,6 +39,26 @@ export function createGeminiProvider({ apiKey, model = DEFAULT_GEMINI_MODEL, cli
           maxOutputTokens: 2048,
           responseMimeType: "application/json",
           responseJsonSchema: workflowPrompt.RESPONSE_JSON_SCHEMA,
+          abortSignal: signal,
+        },
+      });
+      const text = response.text;
+      if (!text) throw new Error("Gemini respondió sin contenido.");
+      return JSON.parse(text);
+    },
+
+    /** RF-17: flujo completo propuesto a partir de una descripción. */
+    generatePromptVersion: generatePrompt.PROMPT_VERSION,
+    async generateWorkflow({ description }, { signal } = {}) {
+      const response = await ai.models.generateContent({
+        model,
+        contents: generatePrompt.buildGeneratePrompt({ description }),
+        config: {
+          systemInstruction: generatePrompt.SYSTEM_INSTRUCTION,
+          temperature: 0.2,
+          maxOutputTokens: 4096,
+          responseMimeType: "application/json",
+          responseJsonSchema: generatePrompt.RESPONSE_JSON_SCHEMA,
           abortSignal: signal,
         },
       });

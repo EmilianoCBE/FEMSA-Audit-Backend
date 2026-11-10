@@ -13,7 +13,14 @@ const state = z.object({
   name: text(80),
   tone: z.enum(["neutral", "amber", "accent", "green", "red"]),
   position: point,
+  /** Fase 2: días que un hallazgo puede quedarse en este estado antes de considerarse vencido. */
+  slaDays: z.number().int().min(1).max(365).optional(),
 });
+
+/** Fase 2: lo que se exige para ejecutar una transición (lo aplicará el flujo en operación). */
+const requires = z
+  .object({ evidence: z.boolean().optional(), comment: z.boolean().optional(), actionPlan: z.boolean().optional() })
+  .optional();
 
 const transition = z.object({
   id,
@@ -24,8 +31,9 @@ const transition = z.object({
   /** Trazo SVG dentro del lienzo; si falta, el front lo calcula entre los dos estados. */
   path: z.string().max(2000).optional(),
   labelPosition: point.optional(),
-  labelAnchor: z.enum(["start", "middle"]).optional(),
+  labelAnchor: z.enum(["start", "middle", "end"]).optional(),
   variant: z.enum(["default", "active", "rejected", "suggested"]),
+  requires,
 });
 
 export const workflowSchema = z
